@@ -1,0 +1,118 @@
+import { View, Text, TouchableOpacity, Image, ImageSourcePropType } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { PlaceholderImage } from './components/PlaceholderImage';
+
+type ProductCardProps = {
+  id: string;
+  name: string;
+  price: number;
+  image: ImageSourcePropType | null;
+  onPress?: () => void;
+  onFavoritePress?: () => void;
+  isFavorite?: boolean;
+};
+
+export const ProductCard = ({
+  id,
+  name,
+  price,
+  image,
+  onPress,
+  onFavoritePress,
+  isFavorite = false,
+}: ProductCardProps) => {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        backgroundColor: 'white',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        marginHorizontal: 8,
+        width: 160,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+      }}
+    >
+      <View style={{ position: 'relative' }}>
+        {image ? (
+          <Image
+            source={image}
+            style={{
+              width: '100%',
+              height: 128,
+              borderRadius: 8,
+              marginBottom: 8,
+              resizeMode: 'contain',
+            }}
+          />
+        ) : (
+          <View style={{ width: '100%', height: 128, marginBottom: 8 }}>
+            <PlaceholderImage
+              width={160}
+              height={128}
+              borderRadius={8}
+              backgroundColor="#e5e7eb"
+            />
+          </View>
+        )}
+        <TouchableOpacity
+          onPress={onFavoritePress}
+          style={{
+            position: 'absolute',
+            top: 4,
+            right: 4,
+            backgroundColor: 'white',
+            padding: 4,
+            borderRadius: 12,
+          }}
+        >
+          <Ionicons
+            name={isFavorite ? 'heart' : 'heart-outline'}
+            size={20}
+            color={isFavorite ? '#FF3B30' : '#000'}
+          />
+        </TouchableOpacity>
+      </View>
+      <Text style={{ fontWeight: '500', color: '#111827' }}>{name}</Text>
+      <Text style={{ color: '#6B7280' }}>${price.toFixed(2)}</Text>
+    </TouchableOpacity>
+  );
+};
+
+type ProductGridProps = {
+  products: Array<{
+    id: string;
+    name: string;
+    price: number;
+    image: ImageSourcePropType | null;
+  }>;
+  onProductPress: (id: string) => void;
+  onFavoritePress: (id: string, isFavorite: boolean) => void;
+  favorites: string[];
+};
+
+export const ProductGrid = ({
+  products,
+  onProductPress,
+  onFavoritePress,
+  favorites,
+}: ProductGridProps) => {
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, justifyContent: 'space-between' }}>
+      {products.map((product) => (
+        <ProductCard
+          key={product.id}
+          {...product}
+          isFavorite={favorites.includes(product.id)}
+          onPress={() => onProductPress(product.id)}
+          onFavoritePress={() => onFavoritePress(product.id, favorites.includes(product.id))}
+        />
+      ))}
+    </View>
+  );
+};

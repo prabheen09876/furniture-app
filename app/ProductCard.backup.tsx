@@ -1,8 +1,7 @@
-import { View, Text, TouchableOpacity, Image, ImageSourcePropType, StyleSheet, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ImageSourcePropType, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import PlaceholderImage from './components/PlaceholderImage';
 import theme from './theme';
-import { formatPrice } from '@/utils/format';
 
 type ProductCardProps = {
   id: string;
@@ -54,9 +53,10 @@ const ProductCard = ({
             />
           </View>
         )}
-        <Pressable
+        <TouchableOpacity
           onPress={handleFavoritePress}
           style={styles.favoriteButton}
+          activeOpacity={0.7}
           accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
           accessibilityRole="button"
         >
@@ -65,13 +65,13 @@ const ProductCard = ({
             size={20}
             color={isFavorite ? theme.colors.error : theme.colors.textLight}
           />
-        </Pressable>
+        </TouchableOpacity>
       </View>
       <View style={styles.detailsContainer}>
         <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
           {name}
         </Text>
-        <Text style={styles.price}>{formatPrice(price)}</Text>
+        <Text style={styles.price}>${price.toFixed(2)}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -98,16 +98,15 @@ export const ProductGrid = ({
   return (
     <View style={styles.gridContainer}>
       {products.map((product) => (
-        <View key={product.id} style={styles.gridItem}>
-          <ProductCard
-            {...product}
-            isFavorite={favorites.includes(product.id)}
-            onPress={() => onProductPress(product.id)}
-            onFavoritePress={() =>
-              onFavoritePress(product.id, favorites.includes(product.id))
-            }
-          />
-        </View>
+        <ProductCard
+          key={product.id}
+          {...product}
+          isFavorite={favorites.includes(product.id)}
+          onPress={() => onProductPress(product.id)}
+          onFavoritePress={() =>
+            onFavoritePress(product.id, favorites.includes(product.id))
+          }
+        />
       ))}
     </View>
   );
@@ -167,7 +166,6 @@ const styles = StyleSheet.create({
   },
   gridContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.md,
     paddingBottom: theme.spacing.lg,
@@ -181,7 +179,6 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   gridItem: {
-    width: '48%',  // Set to slightly less than 50% to account for spacing
     marginBottom: theme.spacing.md,
     borderRadius: theme.radius.lg,
     overflow: 'hidden',
