@@ -1,7 +1,7 @@
 import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import theme from './theme';
+import theme from '../theme';
 
 type TabBarItemProps = {
   icon?: string;
