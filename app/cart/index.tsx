@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   listContent: {
-    paddingBottom: 100,
+    paddingBottom: 180, // Increased padding to account for footer and tab bar
   },
   itemContainer: {
     flexDirection: 'row',
@@ -385,18 +385,20 @@ const styles = StyleSheet.create({
   },
   footer: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    bottom: 80, // Increased bottom position to avoid overlap with tab bar
+    left: 10,
+    right: 10,
     backgroundColor: 'white',
     padding: 20,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
+    borderRadius: 20,
+    // borderTopRightRadius: 20,
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: -2 },
+    // shadowOpacity: 0.1,
+    // shadowRadius: 10,
+    // elevation: 5,
+    zIndex: 50, // Added zIndex to ensure it appears above other elements
+ 
   },
   totalContainer: {
     flexDirection: 'row',

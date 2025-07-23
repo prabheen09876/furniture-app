@@ -31,16 +31,10 @@ const TabBarItem = ({ icon, isActive, onPress, label, isSearch }: TabBarItemProp
       <View style={styles.tabContent}>
         <Ionicons
           name={icon as any}
-          size={24}
+          size={26} /* Slightly larger icons since we removed text */
           color={isActive ? theme.colors.primary : theme.colors.textLight}
           style={styles.icon}
         />
-        <Text style={[
-          styles.tabLabel,
-          isActive && styles.activeTabLabel
-        ]}>
-          {label}
-        </Text>
       </View>
     )}
   </TouchableOpacity>
@@ -85,12 +79,19 @@ export default TabBar;
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: theme.colors.white,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    paddingBottom: 8,
-    paddingTop: 8,
-    position: 'relative',
+    position: 'absolute',
+    bottom: 20,
+    left: 16,
+    right: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.69)', // Semi-transparent background
+    borderRadius: 30, // More rounded for a more compact look
+    paddingVertical: 12, // Adjusted padding for icon-only layout
+    zIndex: 1000, // Very high z-index to float above everything
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: 4 },
+    // shadowOpacity: 0.15,
+    // shadowRadius: 12,
+    // elevation: 10,
   },
   tabBar: {
     flexDirection: 'row',
@@ -102,13 +103,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: 4, // Reduced vertical padding for icon-only layout
     position: 'relative',
-    minWidth: 40, // Reduced minWidth to fit 5 tabs
-    maxWidth: 80, // Limit max width for better spacing
+    minWidth: 50, // Adjusted width for better spacing
+    maxWidth: 60, // More compact max width
   },
   tabContent: {
     alignItems: 'center',
+    justifyContent: 'center',
   },
   searchTabItem: {
     flex: 1,
@@ -118,29 +120,21 @@ const styles = StyleSheet.create({
     // Add any active tab styling if needed
   },
   icon: {
-    marginBottom: 4,
+    // No margin needed since we removed labels
   },
-  tabLabel: {
-    fontSize: 10,
-    color: theme.colors.textLight,
-    marginTop: 2,
-  },
-  activeTabLabel: {
-    color: theme.colors.primary,
-    fontWeight: '600',
-  },
+  // Removed tabLabel and activeTabLabel styles as they're no longer needed
   searchButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -24,
-    elevation: 8,
+    marginTop: -5, // Reduced margin since we have a more compact layout
+    elevation: 6,
     shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
 });

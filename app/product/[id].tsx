@@ -45,7 +45,7 @@ export default function ProductDetailScreen() {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('id', id)
+        .eq('id', id as string)
         .single();
 
       if (error) throw error;
@@ -61,7 +61,7 @@ export default function ProductDetailScreen() {
   const handleAddToCart = async () => {
     if (!user) {
       Alert.alert('Sign In Required', 'Please sign in to add items to cart');
-      router.push('/auth');
+      router.push('/auth' as any);
       return;
     }
 
@@ -80,7 +80,7 @@ export default function ProductDetailScreen() {
   const handleWishlistToggle = async () => {
     if (!user) {
       Alert.alert('Sign In Required', 'Please sign in to add items to wishlist');
-      router.push('/auth');
+      router.push('/auth' as any);
       return;
     }
 
@@ -120,7 +120,8 @@ export default function ProductDetailScreen() {
     );
   }
 
-  const images = product.images && product.images.length > 0 ? product.images : [product.image_url];
+  // Handle image display - use image_url if images array is not available
+  const productImages = product.image_url ? [product.image_url] : [];
 
   return (
     <LinearGradient colors={['#F5E6D3', '#E8D5C4']} style={styles.container}>
@@ -151,7 +152,7 @@ export default function ProductDetailScreen() {
               setSelectedImageIndex(index);
             }}
           >
-            {images.map((image, index) => (
+            {productImages.map((image: string, index: number) => (
               <View key={index} style={styles.imageSlide}>
                 <Image source={{ uri: image }} style={styles.productImage} />
               </View>
@@ -159,9 +160,9 @@ export default function ProductDetailScreen() {
           </ScrollView>
           
           {/* Image Indicators */}
-          {images.length > 1 && (
+          {productImages.length > 1 && (
             <View style={styles.imageIndicators}>
-              {images.map((_, index) => (
+              {productImages.map((_: string, index: number) => (
                 <View
                   key={index}
                   style={[
@@ -181,7 +182,7 @@ export default function ProductDetailScreen() {
             <View style={styles.ratingContainer}>
               <Star size={16} color="#FFD700" fill="#FFD700" strokeWidth={2} />
               <Text style={styles.ratingText}>{product.rating?.toFixed(1) || '0.0'}</Text>
-              <Text style={styles.reviewCount}>({product.review_count || 0} reviews)</Text>
+              <Text style={styles.reviewCount}>(0 reviews)</Text>
             </View>
           </View>
 
@@ -202,12 +203,12 @@ export default function ProductDetailScreen() {
           <View style={styles.stockContainer}>
             <View style={[
               styles.stockIndicator,
-              product.in_stock ? styles.inStock : styles.outOfStock
+              product.stock_quantity > 0 ? styles.inStock : styles.outOfStock
             ]} />
             <Text style={styles.stockText}>
-              {product.in_stock ? 'In Stock' : 'Out of Stock'}
+              {product.stock_quantity > 0 ? 'In Stock' : 'Out of Stock'}
             </Text>
-            {product.stock_quantity && (
+            {product.stock_quantity > 0 && (
               <Text style={styles.stockQuantity}>
                 ({product.stock_quantity} available)
               </Text>
@@ -215,7 +216,7 @@ export default function ProductDetailScreen() {
           </View>
 
           {/* Quantity Selector */}
-          {product.in_stock && (
+          {product.stock_quantity > 0 && (
             <View style={styles.quantityContainer}>
               <Text style={styles.quantityLabel}>Quantity:</Text>
               <View style={styles.quantitySelector}>
@@ -228,7 +229,7 @@ export default function ProductDetailScreen() {
                 <Text style={styles.quantityText}>{quantity}</Text>
                 <TouchableOpacity
                   style={styles.quantityButton}
-                  onPress={() => setQuantity(quantity + 1)}
+                  onPress={() => setQuantity(Math.min(product.stock_quantity, quantity + 1))}
                 >
                   <Plus size={16} color="#2D1B16" strokeWidth={2} />
                 </TouchableOpacity>
@@ -245,24 +246,22 @@ export default function ProductDetailScreen() {
                 <Text style={styles.detailValue}>{product.sku}</Text>
               </View>
             )}
-            {product.weight && (
+            {product.brand && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Weight:</Text>
-                <Text style={styles.detailValue}>{product.weight} lbs</Text>
+                <Text style={styles.detailLabel}>Brand:</Text>
+                <Text style={styles.detailValue}>{product.brand}</Text>
               </View>
             )}
-            {product.materials && product.materials.length > 0 && (
-              <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Materials:</Text>
-                <Text style={styles.detailValue}>{product.materials.join(', ')}</Text>
-              </View>
-            )}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Category:</Text>
+              <Text style={styles.detailValue}>{product.category}</Text>
+            </View>
           </View>
         </BlurView>
       </ScrollView>
 
       {/* Fixed Bottom Actions */}
-      {product.in_stock && (
+      {product.stock_quantity > 0 && (
         <BlurView intensity={95} style={styles.bottomActions}>
           <TouchableOpacity style={styles.addToCartButton} onPress={handleAddToCart}>
             <ShoppingCart size={20} color="#FFFFFF" strokeWidth={2} />
@@ -364,7 +363,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     borderRadius: 30,
     padding: 30,
-    marginBottom: 100,
+    marginBottom: 160, // Increased to account for floating add to cart button
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
@@ -507,13 +506,21 @@ const styles = StyleSheet.create({
   },
   bottomActions: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    bottom: 80, 
+    left: 20,
+    right: 20,
     paddingHorizontal: 20,
-    paddingVertical: 20,
-    paddingBottom: 40,
+    paddingVertical: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   addToCartButton: {
     backgroundColor: '#2D1B16',
@@ -522,6 +529,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 16,
     borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   addToCartText: {
     color: '#FFFFFF',
