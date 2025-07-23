@@ -25,12 +25,18 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false);
 
   const fetchWishlistItems = async () => {
+    let isMounted = true;
+    
     if (!user) {
-      setItems([]);
+      if (isMounted) {
+        setItems([]);
+      }
       return;
     }
 
-    setLoading(true);
+    if (isMounted) {
+      setLoading(true);
+    }
     try {
       const { data, error } = await supabase
         .from('wishlist_items')
@@ -41,12 +47,20 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', user.id);
 
       if (error) throw error;
-      setItems(data || []);
+      if (isMounted) {
+        setItems(data || []);
+      }
     } catch (error) {
       console.error('Error fetching wishlist items:', error);
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
+    
+    return () => {
+      isMounted = false;
+    };
   };
 
   useEffect(() => {

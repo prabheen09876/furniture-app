@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 
@@ -18,8 +19,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const isMountedRef = useRef(true);
 
-  const checkAdminStatus = async (userId?: string): Promise<boolean> => {
+  const checkAdminStatus = async (userId?: string, mountedRef = isMountedRef): Promise<boolean> => {
     const userIdToCheck = userId || user?.id;
     if (!userIdToCheck) return false;
   
@@ -48,7 +50,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('Admin privileges ensured for:', user.email);
         }
         
-        setIsAdmin(true);
+        if (mountedRef.current) {
+          setIsAdmin(true);
+        }
         return true;
       }
       
@@ -61,43 +65,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
       // Check if data exists and has at least one row
       const adminStatus = !error && data && data.length > 0;
-      setIsAdmin(adminStatus);
+      if (mountedRef.current) {
+        setIsAdmin(adminStatus);
+      }
       return adminStatus;
     } catch (error) {
       console.error('Error checking admin status:', error);
-      setIsAdmin(false);
+      if (mountedRef.current) {
+        setIsAdmin(false);
+      }
       return false;
     }
   };
 
   useEffect(() => {
+    let isMounted = true;
+    
     // Get initial session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         console.error('Error getting session:', error);
       }
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        checkAdminStatus(session.user.id);
+      if (isMounted) {
+        setUser(session?.user ?? null);
       }
-      setLoading(false);
+      if (session?.user) {
+        checkAdminStatus(session.user.id, { current: isMounted });
+      }
+      if (isMounted) {
+        setLoading(false);
+      }
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.email);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await checkAdminStatus(session.user.id);
-      } else {
-        setIsAdmin(false);
+      if (isMounted) {
+        setUser(session?.user ?? null);
       }
       
-      setLoading(false);
+      if (session?.user) {
+        await checkAdminStatus(session.user.id, { current: isMounted });
+      } else {
+        if (isMounted) {
+          setIsAdmin(false);
+        }
+      }
+      
+      if (isMounted) {
+        setLoading(false);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      isMountedRef.current = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -115,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       if (data.user) {
-        await checkAdminStatus(data.user.id);
+        await checkAdminStatus(data.user.id, isMountedRef);
       }
       
       console.log('Sign in successful:', data.user?.email);
@@ -227,7 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error('Error adding admin privileges:', adminError);
           } else {
             console.log('Admin privileges added successfully');
-            await checkAdminStatus(data.user.id);
+            await checkAdminStatus(data.user.id, isMountedRef);
           }
         } catch (adminError) {
           console.error('Exception adding admin privileges:', adminError);
@@ -281,13 +305,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error('Sign out error:', error);
       }
-      setIsAdmin(false);
+      if (isMountedRef.current) {
+        setIsAdmin(false);
+      }
     } catch (error) {
       console.error('Sign out exception:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ 

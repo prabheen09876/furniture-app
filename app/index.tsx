@@ -240,6 +240,8 @@ export default function HomeScreen() {
   });
 
   const fetchFeaturedProducts = useCallback(async () => {
+    let isMounted = true;
+    
     try {
       const { data, error } = await supabase
         .from('products')
@@ -247,12 +249,20 @@ export default function HomeScreen() {
         .eq('is_featured', true)
 
       if (error) throw error;
-      setFeaturedProducts(data || []);
+      if (isMounted) {
+        setFeaturedProducts(data || []);
+      }
     } catch (error) {
       console.error('Error fetching featured products:', error);
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
   
   const fetchProducts = useCallback(async () => {

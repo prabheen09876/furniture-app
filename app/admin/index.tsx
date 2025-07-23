@@ -192,9 +192,9 @@ export default function AdminDashboard() {
             <Text style={styles.title}>Admin Dashboard</Text>
             <Text style={styles.subtitle}>Welcome back, {user?.email?.split('@')[0]}</Text>
           </View>
-          <TouchableOpacity style={styles.settingsButton} onPress={() => router.push('/admin/settings' as any)}>
+          <View style={styles.settingsButton}>
             <Settings size={20} color="#2D1B16" strokeWidth={2} />
-          </TouchableOpacity>
+          </View>
         </View>
 
         {/* Stats Overview */}

@@ -41,6 +41,8 @@ export default function ProductDetailScreen() {
   }, [id]);
 
   const fetchProduct = async () => {
+    let isMounted = true;
+    
     try {
       const { data, error } = await supabase
         .from('products')
@@ -49,13 +51,21 @@ export default function ProductDetailScreen() {
         .single();
 
       if (error) throw error;
-      setProduct(data);
+      if (isMounted) {
+        setProduct(data);
+      }
     } catch (error) {
       console.error('Error fetching product:', error);
       Alert.alert('Error', 'Failed to load product details');
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
+    
+    return () => {
+      isMounted = false;
+    };
   };
 
   const handleAddToCart = async () => {

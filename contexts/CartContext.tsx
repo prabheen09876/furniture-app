@@ -28,12 +28,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false);
 
   const fetchCartItems = async () => {
+    let isMounted = true;
+    
     if (!user) {
-      setItems([]);
+      if (isMounted) {
+        setItems([]);
+      }
       return;
     }
 
-    setLoading(true);
+    if (isMounted) {
+      setLoading(true);
+    }
     try {
       const { data, error } = await supabase
         .from('cart_items')
@@ -44,12 +50,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', user.id);
 
       if (error) throw error;
-      setItems(data || []);
+      if (isMounted) {
+        setItems(data || []);
+      }
     } catch (error) {
       console.error('Error fetching cart items:', error);
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
+    
+    return () => {
+      isMounted = false;
+    };
   };
 
   useEffect(() => {
