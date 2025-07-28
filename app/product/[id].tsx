@@ -32,6 +32,7 @@ export default function ProductDetailScreen() {
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   
   const [product, setProduct] = useState<Product | null>(null);
+  const [productImages, setProductImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -53,6 +54,8 @@ export default function ProductDetailScreen() {
       if (error) throw error;
       if (isMounted) {
         setProduct(data);
+        // Fetch product images
+        await fetchProductImages(data.image_url);
       }
     } catch (error) {
       console.error('Error fetching product:', error);
@@ -66,6 +69,40 @@ export default function ProductDetailScreen() {
     return () => {
       isMounted = false;
     };
+  };
+
+  const fetchProductImages = async (fallbackImage?: string | null) => {
+    try {
+      const { data, error } = await supabase
+        .from('product_images')
+        .select('image_url')
+        .eq('product_id', id as string)
+        .order('sort_order', { ascending: true });
+
+      if (error) {
+        console.warn('Error fetching product images:', error);
+        // Use fallback image if available
+        if (fallbackImage) {
+          setProductImages([fallbackImage]);
+        }
+        return;
+      }
+
+      const imageUrls = data?.map(img => img.image_url) || [];
+      
+      if (imageUrls.length > 0) {
+        setProductImages(imageUrls);
+      } else if (fallbackImage) {
+        // Use fallback image if no images found in product_images table
+        setProductImages([fallbackImage]);
+      }
+    } catch (error) {
+      console.warn('Error fetching product images:', error);
+      // Use fallback image if available
+      if (fallbackImage) {
+        setProductImages([fallbackImage]);
+      }
+    }
   };
 
   const handleAddToCart = async () => {
@@ -130,8 +167,7 @@ export default function ProductDetailScreen() {
     );
   }
 
-  // Handle image display - use image_url if images array is not available
-  const productImages = product.image_url ? [product.image_url] : [];
+  // Use the productImages state that includes all images from product_images table
 
   return (
     <LinearGradient colors={['#F5E6D3', '#E8D5C4']} style={styles.container}>

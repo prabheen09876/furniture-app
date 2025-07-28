@@ -15,11 +15,11 @@ import { formatPrice } from '@/utils/format';
 type Product = {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   price: number;
-  original_price?: number;
-  rating?: number;
-  image_url?: string;
+  original_price?: number | null;
+  rating?: number | null;
+  image_url?: string | null;
 };
 
 interface ProductGridProps {
@@ -59,7 +59,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({ products, onAddToCart 
                 {product.name}
               </Text>
               <Text style={styles.productDescription} numberOfLines={1}>
-                {product.description}
+                {product.description || 'No description available'}
               </Text>
               <View style={styles.productFooter}>
                 <View style={styles.priceContainer}>
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   productsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     padding: 8,
   },
   productCard: {

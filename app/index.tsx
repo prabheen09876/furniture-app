@@ -19,6 +19,7 @@ import { Search, Bell, ChevronDown } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { ProductGrid } from './ProductGrid';
+import { getHomePageCategories } from '@/constants/categories';
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('en-IN', {
@@ -36,16 +37,8 @@ type Product = Database['public']['Tables']['products']['Row'];
 
 const { width: screenWidth } = Dimensions.get('window');
 
-const categories = [
-  { id: 'all', name: 'All', icon: '📦' },
-  { id: 'chairs', name: 'Chairs', icon: '🪑' },
-  { id: 'tables', name: 'Tables', icon: '🪵' },
-  { id: 'sofas', name: 'Sofas', icon: '🛋️' },
-  { id: 'beds', name: 'Beds', icon: '🛏️' },
-  { id: 'lamps', name: 'Lamps', icon: '💡' },
-  { id: 'decor', name: 'Decor', icon: '🖼️' },
-  { id: 'storage', name: 'Storage', icon: '🗄️' },
-];
+// Get categories for home page display
+const categories = getHomePageCategories();
 
 // Layout constants
 const HEADER_HEIGHT = Platform.OS === 'ios' ? 80 : 80; // Reduced from 100 to 80
@@ -123,7 +116,7 @@ const renderCategories = () => {
             <TouchableOpacity 
               key={category.id} 
               style={styles.categoryCard}
-              onPress={() => console.log(`Category: ${category.name}`)}
+              onPress={() => router.push(`/categories?filter=${category.id}`)}
             >
               <View style={styles.categoryIconContainer}>
                 <Text style={styles.categoryIcon}>{category.icon}</Text>
@@ -138,7 +131,7 @@ const renderCategories = () => {
             <TouchableOpacity 
               key={category.id} 
               style={styles.categoryCard}
-              onPress={() => console.log(`Category: ${category.name}`)}
+              onPress={() => router.push(`/categories?filter=${category.id}`)}
             >
               <View style={styles.categoryIconContainer}>
                 <Text style={styles.categoryIcon}>{category.icon}</Text>
@@ -250,7 +243,12 @@ export default function HomeScreen() {
 
       if (error) throw error;
       if (isMounted) {
-        setFeaturedProducts(data || []);
+        // Ensure the product data matches our expected type
+        const productsData = (data || []).map(product => ({
+          ...product,
+          rating: (product as any).rating || null
+        })) as Product[];
+        setFeaturedProducts(productsData);
       }
     } catch (error) {
       console.error('Error fetching featured products:', error);
@@ -273,7 +271,12 @@ export default function HomeScreen() {
         .limit(6)
 
       if (error) throw error;
-      setProducts(data || []);
+      // Ensure the product data matches our expected type
+      const productsData = (data || []).map(product => ({
+        ...product,
+        rating: (product as any).rating || null
+      })) as Product[];
+      setProducts(productsData);
     } catch (error) {
       console.error('Error fetching products:', error);
     }
@@ -647,8 +650,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
   },
   categoryIcon: {
     fontSize: 24,

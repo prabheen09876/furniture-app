@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { Package, ShoppingCart, Users, DollarSign, TrendingUp, Grid3x3, Settings, ChartBar as BarChart3, TriangleAlert as AlertTriangle, Clock, CircleCheck as CheckCircle2, ArrowLeft } from 'lucide-react-native';
+import { Package, ShoppingCart, Users, DollarSign, TrendingUp, Grid3x3, Settings, ChartBar as BarChart3, TriangleAlert as AlertTriangle, Clock, CircleCheck as CheckCircle2, ArrowLeft, MessageCircle, ShoppingBag } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -103,6 +103,13 @@ export default function AdminDashboard() {
       route: '/admin/orders'
     },
     {
+      title: 'Support Messages',
+      description: 'Manage customer inquiries',
+      icon: MessageCircle,
+      color: '#8B5CF6',
+      route: '/admin/support'
+    },
+    {
       title: 'User Management',
       description: 'Manage user accounts',
       icon: Users,
@@ -115,6 +122,13 @@ export default function AdminDashboard() {
       icon: Grid3x3,
       color: '#7C2D12',
       route: '/admin/categories'
+    },
+    {
+      title: 'Create Support Table',
+      description: 'Set up support messages table',
+      icon: Settings,
+      color: '#0891B2',
+      route: '/admin/create-support-table'
     },
   ];
 
@@ -264,6 +278,37 @@ export default function AdminDashboard() {
             ))}
           </View>
         </View>
+        
+        {/* Database Utilities */}
+        <View style={styles.actionsContainer}>
+          <Text style={styles.sectionTitle}>Database Utilities</Text>
+          <BlurView intensity={40} style={styles.metricsCard}>
+            <TouchableOpacity 
+              style={styles.utilityButton}
+              onPress={() => router.push('/admin/create-support-table')}
+            >
+              <Text style={styles.utilityButtonText}>Create Support Messages Table</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.utilityButton}
+              onPress={() => router.push('/admin/create-users-table')}
+            >
+              <Text style={styles.utilityButtonText}>Create Users Table</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.utilityButton}
+              onPress={() => router.push('/admin/create-products-table')}
+            >
+              <Text style={styles.utilityButtonText}>Create Products Table</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.utilityButton}
+              onPress={() => router.push('/admin/create-orders-table')}
+            >
+              <Text style={styles.utilityButtonText}>Create Orders Table</Text>
+            </TouchableOpacity>
+          </BlurView>
+        </View>
 
         {/* Performance Metrics */}
         <View style={styles.metricsContainer}>
@@ -344,15 +389,15 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 20,
+    paddingHorizontal: 4,
     marginBottom: 30,
+    justifyContent: 'space-between',
   },
   statCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    borderRadius: 20,
-    padding: 20,
-    width: (screenWidth - 50) / 2,
-    marginRight: 10,
+    borderRadius: 16,
+    padding: screenWidth < 350 ? 12 : 16,
+    width: screenWidth < 350 ? '100%' : (screenWidth - 40) / 2.05,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
@@ -395,7 +440,7 @@ const styles = StyleSheet.create({
     color: '#8B7355',
   },
   alertsContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 4,
     marginBottom: 30,
   },
   sectionTitle: {
@@ -406,14 +451,15 @@ const styles = StyleSheet.create({
   },
   alertsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
   alertCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.4)',
     borderRadius: 16,
-    padding: 16,
-    flex: 1,
-    marginHorizontal: 4,
+    padding: screenWidth < 350 ? 12 : 16,
+    width: screenWidth < 350 ? '100%' : (screenWidth - 40) / 2.05,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
@@ -457,7 +503,7 @@ const styles = StyleSheet.create({
     color: '#8B7355',
   },
   actionsContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 4,
     marginBottom: 30,
   },
   actionsGrid: {
@@ -466,7 +512,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   actionItem: {
-    width: (screenWidth - 50) / 2,
+    width: screenWidth < 350 ? '100%' : (screenWidth - 40) / 2.05,
     marginBottom: 16,
   },
   actionItemInner: {
@@ -535,5 +581,56 @@ const styles = StyleSheet.create({
   metricLabel: {
     fontSize: 12,
     color: '#8B7355',
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  quickActionItem: {
+    width: '48%',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  quickActionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  quickActionText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#2D1B16',
+    textAlign: 'center',
+  },
+  statsCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 16,
+    padding: 16,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  utilityButton: {
+    backgroundColor: '#2D1B16',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  utilityButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

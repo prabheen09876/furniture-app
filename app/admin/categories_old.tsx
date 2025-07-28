@@ -9,11 +9,10 @@ import {
   Alert,
   Modal,
   Image,
-  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { ArrowLeft, Plus, Search, Edit3, Trash2, Eye, EyeOff, Upload, X } from 'lucide-react-native';
+import { ArrowLeft, Plus, Search, CreditCard as Edit3, Trash2, Grid3x3, Eye, EyeOff, Upload } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Database } from '@/types/database';
@@ -121,9 +120,6 @@ export default function AdminCategories() {
     category.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalCategories = categories.length;
-  const activeCategories = categories.filter(c => c.is_active).length;
-
   return (
     <LinearGradient colors={['#F5E6D3', '#E8D5C4']} style={styles.container}>
       {/* Header */}
@@ -133,17 +129,17 @@ export default function AdminCategories() {
         </TouchableOpacity>
         <Text style={styles.title}>Categories</Text>
         <TouchableOpacity 
-          style={styles.addButton} 
+          style={styles.addButton}
           onPress={() => setShowAddModal(true)}
         >
-          <Plus size={20} color="#2D1B16" strokeWidth={2} />
+          <Plus size={20} color="#FFFFFF" strokeWidth={2} />
         </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <BlurView intensity={30} style={styles.searchBar}>
-          <Search size={18} color="#8B7355" strokeWidth={2} />
+        <BlurView intensity={40} style={styles.searchBar}>
+          <Search size={20} color="#8B7355" strokeWidth={2} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search categories..."
@@ -156,120 +152,110 @@ export default function AdminCategories() {
 
       {/* Stats */}
       <View style={styles.statsContainer}>
-        <BlurView intensity={30} style={styles.statCard}>
-          <Text style={styles.statValue}>{totalCategories}</Text>
-          <Text style={styles.statLabel}>Total</Text>
+        <BlurView intensity={40} style={styles.statCard}>
+          <Grid3x3 size={20} color="#4F46E5" strokeWidth={2} />
+          <Text style={styles.statValue}>{categories.length}</Text>
+          <Text style={styles.statLabel}>Total Categories</Text>
         </BlurView>
-        <BlurView intensity={30} style={styles.statCard}>
-          <Text style={styles.statValue}>{activeCategories}</Text>
+        
+        <BlurView intensity={40} style={styles.statCard}>
+          <Eye size={20} color="#059669" strokeWidth={2} />
+          <Text style={styles.statValue}>{categories.filter(c => c.is_active).length}</Text>
           <Text style={styles.statLabel}>Active</Text>
         </BlurView>
-        <BlurView intensity={30} style={styles.statCard}>
-          <Text style={styles.statValue}>{totalCategories - activeCategories}</Text>
+        
+        <BlurView intensity={40} style={styles.statCard}>
+          <EyeOff size={20} color="#DC2626" strokeWidth={2} />
+          <Text style={styles.statValue}>{categories.filter(c => !c.is_active).length}</Text>
           <Text style={styles.statLabel}>Inactive</Text>
         </BlurView>
       </View>
 
       {/* Categories List */}
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
         <View style={styles.categoriesContainer}>
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#2D1B16" />
-              <Text style={styles.loadingText}>Loading categories...</Text>
-            </View>
-          ) : filteredCategories.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No categories found</Text>
-            </View>
-          ) : (
-            filteredCategories.map((category) => (
-              <BlurView key={category.id} intensity={30} style={styles.categoryCard}>
-                <View style={styles.categoryContent}>
-                  {category.image_url ? (
-                    <Image source={{ uri: category.image_url }} style={styles.categoryImage} />
-                  ) : (
-                    <View style={styles.categoryImagePlaceholder}>
-                      <Text style={styles.categoryImagePlaceholderText}>
-                        {category.name.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                  )}
-                  
-                  <View style={styles.categoryInfo}>
-                    <View style={styles.categoryHeader}>
-                      <Text style={styles.categoryName}>{category.name}</Text>
-                      <View style={[
-                        styles.statusBadge,
-                        category.is_active ? styles.activeBadge : styles.inactiveBadge
-                      ]}>
-                        <Text style={[
-                          styles.statusText,
-                          category.is_active ? styles.activeText : styles.inactiveText
-                        ]}>
-                          {category.is_active ? 'Active' : 'Inactive'}
-                        </Text>
-                      </View>
-                    </View>
-                    
-                    {category.description && (
-                      <Text style={styles.categoryDescription}>{category.description}</Text>
-                    )}
-                    
-                    <View style={styles.categoryMeta}>
-                      <Text style={styles.categorySlug}>/{category.slug}</Text>
-                      <Text style={styles.productCount}>
-                        {category.product_count} products
-                      </Text>
-                    </View>
-                  </View>
-                  
-                  <View style={styles.categoryActions}>
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => toggleCategoryStatus(category)}
-                    >
-                      {category.is_active ? (
-                        <EyeOff size={16} color="#8B7355" strokeWidth={2} />
-                      ) : (
-                        <Eye size={16} color="#8B7355" strokeWidth={2} />
-                      )}
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => setEditingCategory(category)}
-                    >
-                      <Edit3 size={16} color="#8B7355" strokeWidth={2} />
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => deleteCategory(category.id)}
-                    >
-                      <Trash2 size={16} color="#FF6B47" strokeWidth={2} />
-                    </TouchableOpacity>
+          {filteredCategories.map((category) => (
+            <BlurView key={category.id} intensity={40} style={styles.categoryCard}>
+              {category.image_url && (
+                <Image source={{ uri: category.image_url }} style={styles.categoryImage} />
+              )}
+              
+              <View style={styles.categoryInfo}>
+                <View style={styles.categoryHeader}>
+                  <Text style={styles.categoryName} numberOfLines={1}>
+                    {category.name}
+                  </Text>
+                  <View style={[
+                    styles.statusBadge,
+                    category.is_active ? styles.activeBadge : styles.inactiveBadge
+                  ]}>
+                    <Text style={[
+                      styles.statusText,
+                      category.is_active ? styles.activeText : styles.inactiveText
+                    ]}>
+                      {category.is_active ? 'Active' : 'Inactive'}
+                    </Text>
                   </View>
                 </View>
-              </BlurView>
-            ))
-          )}
+                
+                {category.description && (
+                  <Text style={styles.categoryDescription} numberOfLines={2}>
+                    {category.description}
+                  </Text>
+                )}
+                
+                <View style={styles.categoryMeta}>
+                  <Text style={styles.categorySlug}>/{category.slug}</Text>
+                  <Text style={styles.productCount}>
+                    {category.product_count} products
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.categoryActions}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => toggleCategoryStatus(category)}
+                >
+                  {category.is_active ? (
+                    <EyeOff size={16} color="#8B7355" strokeWidth={2} />
+                  ) : (
+                    <Eye size={16} color="#059669" strokeWidth={2} />
+                  )}
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => setEditingCategory(category)}
+                >
+                  <Edit3 size={16} color="#4F46E5" strokeWidth={2} />
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => deleteCategory(category.id)}
+                >
+                  <Trash2 size={16} color="#DC2626" strokeWidth={2} />
+                </TouchableOpacity>
+              </View>
+            </BlurView>
+          ))}
         </View>
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Add/Edit Modal */}
+      {/* Add/Edit Category Modal */}
       <CategoryModal
-        visible={showAddModal || editingCategory !== null}
+        visible={showAddModal || !!editingCategory}
         category={editingCategory}
         onClose={() => {
           setShowAddModal(false);
           setEditingCategory(null);
         }}
         onSave={() => {
+          fetchCategories();
           setShowAddModal(false);
           setEditingCategory(null);
-          fetchCategories();
         }}
       />
     </LinearGradient>
@@ -288,160 +274,99 @@ function CategoryModal({
   onClose: () => void;
   onSave: () => void;
 }) {
-  const [name, setName] = useState('');
-  const [slug, setSlug] = useState('');
-  const [description, setDescription] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [sortOrder, setSortOrder] = useState('0');
-  const [isActive, setIsActive] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    slug: '',
+    image_url: '',
+    sort_order: '',
+    is_active: true,
+  });
 
   useEffect(() => {
     if (category) {
-      setName(category.name);
-      setSlug(category.slug);
-      setDescription(category.description || '');
-      setImageUrl(category.image_url || '');
-      setSortOrder(category.sort_order.toString());
-      setIsActive(category.is_active);
+      setFormData({
+        name: category.name || '',
+        description: category.description || '',
+        slug: category.slug || '',
+        image_url: category.image_url || '',
+        sort_order: category.sort_order?.toString() || '',
+        is_active: category.is_active ?? true,
+      });
     } else {
-      setName('');
-      setSlug('');
-      setDescription('');
-      setImageUrl('');
-      setSortOrder('0');
-      setIsActive(true);
+      setFormData({
+        name: '',
+        description: '',
+        slug: '',
+        image_url: '',
+        sort_order: '',
+        is_active: true,
+      });
     }
   }, [category]);
 
   const generateSlug = (name: string) => {
-    return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
   };
 
   const handleNameChange = (name: string) => {
-    setName(name);
-    if (!category) {
-      setSlug(generateSlug(name));
-    }
-  };
-
-  const handleImageUpload = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        setUploading(true);
-        const image = result.assets[0];
-        
-        // Create a unique filename
-        const timestamp = Date.now();
-        const randomId = Math.random().toString(36).substring(7);
-        const fileExt = image.uri.split('.').pop() || 'jpg';
-        const filename = `${timestamp}-${randomId}.${fileExt}`;
-        const filePath = `category-images/${filename}`;
-
-        // Convert to blob
-        const response = await fetch(image.uri);
-        const blob = await response.blob();
-
-        // Upload to Supabase Storage
-        const { data, error } = await supabase.storage
-          .from('products')
-          .upload(filePath, blob);
-
-        if (error) throw error;
-
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('products')
-          .getPublicUrl(filePath);
-
-        setImageUrl(publicUrl);
-      }
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      Alert.alert('Error', 'Failed to upload image');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleRemoveImage = async () => {
-    if (imageUrl) {
-      try {
-        // Extract file path from URL
-        const urlParts = imageUrl.split('supabase.co/storage/v1/object/public/products/');
-        if (urlParts.length > 1) {
-          const filePath = urlParts[1];
-          await supabase.storage.from('products').remove([filePath]);
-        }
-      } catch (error) {
-        console.warn('Error removing image from storage:', error);
-      }
-    }
-    setImageUrl('');
+    setFormData({
+      ...formData,
+      name,
+      slug: formData.slug || generateSlug(name),
+    });
   };
 
   const handleSave = async () => {
-    if (!name.trim()) {
+    if (!formData.name.trim()) {
       Alert.alert('Error', 'Category name is required');
       return;
     }
 
-    if (!slug.trim()) {
+    if (!formData.slug.trim()) {
       Alert.alert('Error', 'Category slug is required');
       return;
     }
 
-    setSaving(true);
     try {
       const categoryData = {
-        name: name.trim(),
-        slug: slug.trim(),
-        description: description.trim() || null,
-        image_url: imageUrl || null,
-        sort_order: parseInt(sortOrder) || 0,
-        is_active: isActive,
+        name: formData.name.trim(),
+        description: formData.description.trim() || null,
+        slug: formData.slug.trim(),
+        image_url: formData.image_url.trim() || null,
+        sort_order: parseInt(formData.sort_order) || 0,
+        is_active: formData.is_active,
       };
 
       if (category) {
-        // Update existing category
         const { error } = await supabase
           .from('categories')
           .update(categoryData)
           .eq('id', category.id);
-
+        
         if (error) throw error;
-        Alert.alert('Success', 'Category updated successfully');
       } else {
-        // Create new category
         const { error } = await supabase
           .from('categories')
-          .insert([categoryData]);
-
+          .insert(categoryData);
+        
         if (error) throw error;
-        Alert.alert('Success', 'Category created successfully');
       }
 
+      Alert.alert('Success', `Category ${category ? 'updated' : 'created'} successfully`);
       onSave();
     } catch (error) {
       console.error('Error saving category:', error);
-      Alert.alert('Error', 'Failed to save category');
-    } finally {
-      setSaving(false);
+      Alert.alert('Error', `Failed to ${category ? 'update' : 'create'} category`);
     }
   };
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <LinearGradient colors={['#F5E6D3', '#E8D5C4']} style={styles.modalContainer}>
-        {/* Header */}
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={onClose}>
             <Text style={styles.cancelButton}>Cancel</Text>
@@ -449,116 +374,78 @@ function CategoryModal({
           <Text style={styles.modalTitle}>
             {category ? 'Edit Category' : 'Add Category'}
           </Text>
-          <TouchableOpacity onPress={handleSave} disabled={saving}>
-            <Text style={[styles.saveButton, saving && { opacity: 0.5 }]}>
-              {saving ? 'Saving...' : 'Save'}
-            </Text>
+          <TouchableOpacity onPress={handleSave}>
+            <Text style={styles.saveButton}>Save</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-          {/* Category Image */}
+        <ScrollView style={styles.modalContent}>
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Category Image</Text>
-            <View style={styles.imageUploadContainer}>
-              {imageUrl ? (
-                <View style={styles.imagePreviewContainer}>
-                  <Image source={{ uri: imageUrl }} style={styles.imagePreview} />
-                  <TouchableOpacity 
-                    style={styles.removeImageButton} 
-                    onPress={handleRemoveImage}
-                  >
-                    <X size={16} color="#FFFFFF" strokeWidth={2} />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity 
-                  style={styles.imageUploadButton} 
-                  onPress={handleImageUpload}
-                  disabled={uploading}
-                >
-                  {uploading ? (
-                    <ActivityIndicator size="small" color="#8B7355" />
-                  ) : (
-                    <>
-                      <Upload size={20} color="#8B7355" strokeWidth={2} />
-                      <Text style={styles.imageUploadText}>Upload Image</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-
-          {/* Category Name */}
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Category Name *</Text>
+            <Text style={styles.label}>Category Name</Text>
             <TextInput
               style={styles.input}
-              value={name}
+              value={formData.name}
               onChangeText={handleNameChange}
               placeholder="Enter category name"
-              placeholderTextColor="#8B7355"
             />
           </View>
 
-          {/* Category Slug */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Category Slug *</Text>
+            <Text style={styles.label}>Slug</Text>
             <TextInput
               style={styles.input}
-              value={slug}
-              onChangeText={setSlug}
+              value={formData.slug}
+              onChangeText={(text) => setFormData({ ...formData, slug: text })}
               placeholder="category-slug"
-              placeholderTextColor="#8B7355"
-              autoCapitalize="none"
             />
           </View>
 
-          {/* Description */}
           <View style={styles.formGroup}>
             <Text style={styles.label}>Description</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              value={description}
-              onChangeText={setDescription}
+              value={formData.description}
+              onChangeText={(text) => setFormData({ ...formData, description: text })}
               placeholder="Enter category description"
-              placeholderTextColor="#8B7355"
               multiline
               numberOfLines={3}
             />
           </View>
 
-          {/* Sort Order */}
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Image URL</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.image_url}
+              onChangeText={(text) => setFormData({ ...formData, image_url: text })}
+              placeholder="https://example.com/image.jpg"
+            />
+          </View>
+
           <View style={styles.formGroup}>
             <Text style={styles.label}>Sort Order</Text>
             <TextInput
               style={styles.input}
-              value={sortOrder}
-              onChangeText={setSortOrder}
+              value={formData.sort_order}
+              onChangeText={(text) => setFormData({ ...formData, sort_order: text })}
               placeholder="0"
-              placeholderTextColor="#8B7355"
               keyboardType="numeric"
             />
           </View>
 
-          {/* Active Status */}
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Status</Text>
             <TouchableOpacity
               style={styles.toggleButton}
-              onPress={() => setIsActive(!isActive)}
+              onPress={() => setFormData({ ...formData, is_active: !formData.is_active })}
             >
-              <Text style={styles.toggleLabel}>
-                {isActive ? 'Active' : 'Inactive'}
-              </Text>
+              <Text style={styles.toggleLabel}>Active Category</Text>
               <View style={[
                 styles.toggle,
-                isActive ? styles.toggleActive : styles.toggleInactive
+                formData.is_active ? styles.toggleActive : styles.toggleInactive
               ]}>
                 <View style={[
                   styles.toggleThumb,
-                  isActive ? styles.thumbActive : styles.thumbInactive
+                  formData.is_active ? styles.thumbActive : styles.thumbInactive
                 ]} />
               </View>
             </TouchableOpacity>
@@ -598,7 +485,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: '#2D1B16',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -607,10 +494,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   searchBar: {
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
@@ -653,54 +540,20 @@ const styles = StyleSheet.create({
   categoriesContainer: {
     paddingHorizontal: 20,
   },
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#8B7355',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#8B7355',
-  },
   categoryCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.4)',
     borderRadius: 20,
+    padding: 16,
     marginBottom: 16,
+    flexDirection: 'row',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
-    overflow: 'hidden',
-  },
-  categoryContent: {
-    flexDirection: 'row',
-    padding: 16,
   },
   categoryImage: {
     width: 60,
     height: 60,
     borderRadius: 12,
     marginRight: 16,
-  },
-  categoryImagePlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    backgroundColor: 'rgba(139, 115, 85, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  categoryImagePlaceholderText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#8B7355',
   },
   categoryInfo: {
     flex: 1,
@@ -826,44 +679,6 @@ const styles = StyleSheet.create({
   textArea: {
     height: 80,
     textAlignVertical: 'top',
-  },
-  imageUploadContainer: {
-    alignItems: 'center',
-  },
-  imagePreviewContainer: {
-    position: 'relative',
-  },
-  imagePreview: {
-    width: 120,
-    height: 120,
-    borderRadius: 12,
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#FF6B47',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  imageUploadButton: {
-    width: 120,
-    height: 120,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    borderWidth: 2,
-    borderColor: 'rgba(139, 115, 85, 0.3)',
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  imageUploadText: {
-    marginTop: 8,
-    fontSize: 12,
-    color: '#8B7355',
   },
   toggleButton: {
     flexDirection: 'row',

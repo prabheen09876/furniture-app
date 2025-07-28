@@ -57,21 +57,19 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         
         if (onImageUpload) {
           try {
+            // Upload image to Supabase Storage via parent component
             const newImage = await onImageUpload(imageUri);
             if (newImage) {
-              onChange([...images as UIProductImage[], newImage]);
+              // The parent component handles adding the image to the array
+              // No need to call onChange here as it's handled in handleImageUpload
             }
           } catch (error) {
             console.error('Error uploading image:', error);
             Alert.alert('Error', 'Failed to upload image. Please try again.');
           }
         } else {
-          // Fallback if no upload handler is provided
-          const newImage: UIProductImage = {
-            image_url: imageUri,
-            alt_text: `Image ${images.length + 1}`,
-          };
-          onChange([...images as UIProductImage[], newImage]);
+          // No upload handler provided - this should not happen
+          Alert.alert('Error', 'Image upload is not configured properly.');
         }
       }
     } catch (error) {

@@ -16,7 +16,7 @@ import { supabase } from '@/lib/supabase';
 import { Database } from '@/types/database';
 
 type Order = Database['public']['Tables']['orders']['Row'] & {
-  profiles: {
+  users: {
     full_name: string | null;
     email: string;
   } | null;
@@ -30,6 +30,7 @@ type Order = Database['public']['Tables']['orders']['Row'] & {
       image_url: string;
     } | null;
   }>;
+  order_number: string; // Adding this property as it's used in the component
 };
 
 const statusColors = {
@@ -68,7 +69,7 @@ export default function AdminOrders() {
         .from('orders')
         .select(`
           *,
-          profiles!orders_user_id_fkey (
+          users:user_id (
             full_name,
             email
           ),
@@ -86,7 +87,15 @@ export default function AdminOrders() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setOrders(data || []);
+      
+      // Add order_number property to each order and fix type issues
+      const ordersWithNumber = (data || []).map(order => ({
+        ...order,
+        order_number: `ORD-${order.id.substring(0, 8).toUpperCase()}`
+      }));
+      
+      // Use type assertion to handle the relationship type mismatch
+      setOrders(ordersWithNumber as unknown as Order[]);
     } catch (error) {
       console.error('Error fetching orders:', error);
       Alert.alert('Error', 'Failed to fetch orders');
@@ -121,8 +130,8 @@ export default function AdminOrders() {
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
       order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.profiles?.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.profiles?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
+      order.users?.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.users?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = selectedStatus === 'all' || order.status === selectedStatus;
     
@@ -208,7 +217,7 @@ export default function AdminOrders() {
                   <View style={styles.orderInfo}>
                     <Text style={styles.orderNumber}>{order.order_number}</Text>
                     <Text style={styles.customerName}>
-                      {order.profiles?.full_name || order.profiles?.email}
+                      {order.users?.full_name || order.users?.email}
                     </Text>
                     <Text style={styles.orderDate}>
                       {new Date(order.created_at).toLocaleDateString()}

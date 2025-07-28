@@ -15,9 +15,9 @@ import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 
 const menuItems = [
-  { id: 'orders', title: 'My Orders', icon: ShoppingBag, action: () => {} },
-  { id: 'settings', title: 'Settings', icon: Settings, action: () => {} },
-  { id: 'help', title: 'Help & Support', icon: HelpCircle, action: () => {} },
+  { id: 'orders', title: 'My Orders', icon: ShoppingBag, action: () => router.push('/orders') },
+  { id: 'settings', title: 'Settings', icon: Settings, action: () => router.push('/settings') },
+  { id: 'help', title: 'Help & Support', icon: HelpCircle, action: () => router.push('/help-support') },
 ];
 
 export default function ProfileScreen() {

@@ -1,16 +1,60 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Switch, Modal, ScrollView, Alert, ActivityIndicator, StyleSheet, Image } from 'react-native';
-import { ProductImage as DBProductImage } from '@/types/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { ArrowLeft, Plus, Search, CreditCard as Edit3, Trash2, Eye, Package, DollarSign } from 'lucide-react-native';
+import { ArrowLeft, Plus, Search, CreditCard as Edit3, Trash2, Eye, Package, DollarSign, Settings, ChevronDown } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
-import { Database } from '@/types/database';
+import { Database } from '@/lib/database.types';
 import { formatPrice } from '@/utils/format';
 import ImageUploader from '@/components/ImageUploader';
 
 type Product = Database['public']['Tables']['products']['Row'];
+type ProductImage = Database['public']['Tables']['product_images']['Row'];
+type ProductImageInsert = Database['public']['Tables']['product_images']['Insert'];
+
+// UI Image type for form handling
+interface UIProductImage {
+  id?: string;
+  image_url: string;
+  alt_text?: string | null;
+}
+
+// Convert UI images to database format
+const toDBImages = (images: UIProductImage[], productId: string): ProductImageInsert[] => {
+  return images.map((img, index) => ({
+    product_id: productId,
+    image_url: img.image_url,
+    alt_text: img.alt_text || `Product image ${index + 1}`,
+    sort_order: index
+  }));
+};
+
+// Predefined furniture categories
+const FURNITURE_CATEGORIES = [
+  'Chairs',
+  'Tables',
+  'Sofas',
+  'Beds',
+  'Dressers',
+  'Nightstands',
+  'Coffee Tables',
+  'Dining Tables',
+  'Dining Chairs',
+  'Bar Stools',
+  'Desks',
+  'Office Chairs',
+  'Bookshelves',
+  'Lamps',
+  'Sectionals',
+  'Loveseats',
+  'Cabinets',
+  'Storage',
+  'Mirrors',
+  'Rugs',
+  'Decor',
+  'Outdoor Furniture'
+];
 
 export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -281,9 +325,9 @@ function ProductModal({
   }
 
   // Convert database image to UI image
-  const toUIImages = (dbImages: DBProductImage[] = []): UIProductImage[] => {
+  const toUIImages = (dbImages: ProductImage[] = []): UIProductImage[] => {
     return dbImages
-      .filter((img): img is DBProductImage & { image_url: string } => 
+      .filter((img): img is ProductImage & { image_url: string } => 
         !!img && 
         img.image_url !== null && 
         img.image_url !== undefined && 
@@ -325,6 +369,7 @@ function ProductModal({
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingImages, setIsLoadingImages] = useState(false);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
   const fetchProductImages = useCallback(async (productId: string) => {
     try {
@@ -506,20 +551,34 @@ function ProductModal({
         productId = data.id;
       }
       
-      // Insert all images with the correct sort order
+      // Try to insert images (optional - product can be created without images)
+      let imagesSaved = true;
       if (images.length > 0) {
-        const dbImages = toDBImages(images, productId);
-        const { error: insertError } = await supabase
-          .from('product_images')
-          .insert(dbImages);
-          
-        if (insertError) {
-          console.error('Error inserting images:', insertError);
-          throw insertError;
+        try {
+          const dbImages = toDBImages(images, productId);
+          const { error: insertError } = await supabase
+            .from('product_images')
+            .insert(dbImages);
+            
+          if (insertError) {
+            console.warn('Warning: Could not save product images. Product created without images.', insertError);
+            imagesSaved = false;
+          }
+        } catch (imageError) {
+          console.warn('Warning: Image insertion failed. Product created without images.', imageError);
+          imagesSaved = false;
         }
       }
       
-      Alert.alert('Success', `Product ${product ? 'updated' : 'created'} successfully`);
+      // Show appropriate success message
+      const successMessage = product 
+        ? 'Product updated successfully' 
+        : 'Product created successfully';
+      const imageWarning = !imagesSaved && images.length > 0 
+        ? '\n\nNote: Images could not be saved due to database configuration.' 
+        : '';
+      
+      Alert.alert('Success', successMessage + imageWarning);
       onSave();
       onClose();
     } catch (error: any) {
@@ -558,7 +617,7 @@ function ProductModal({
     }));
   };
 
-  const handleImagesChange = (newImages: DBProductImage[] | UIProductImage[]) => {
+  const handleImagesChange = (newImages: ProductImage[] | UIProductImage[]) => {
     if (!Array.isArray(newImages)) {
       setImages([]);
       return;
@@ -569,7 +628,7 @@ function ProductModal({
       
       // Handle DB format
       if ('product_id' in img) {
-        const dbImg = img as DBProductImage;
+        const dbImg = img as ProductImage;
         if (dbImg.image_url) {
           acc.push({
             id: dbImg.id,
@@ -603,10 +662,107 @@ function ProductModal({
     
     setIsUploading(true);
     try {
-      // In a real app, you would upload the image to your storage here
-      // For now, we'll just create a local image object
+      // Generate a unique filename
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(7);
+      
+      // Extract file extension properly
+      let fileExt = 'jpg'; // default
+      if (imageUri.startsWith('data:')) {
+        // Extract MIME type from data URL
+        const mimeMatch = imageUri.match(/data:([^;]+)/);
+        if (mimeMatch) {
+          const mimeType = mimeMatch[1];
+          if (mimeType === 'image/png') fileExt = 'png';
+          else if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') fileExt = 'jpg';
+          else if (mimeType === 'image/webp') fileExt = 'webp';
+          else if (mimeType === 'image/gif') fileExt = 'gif';
+        }
+      } else {
+        // For regular URLs, try to extract extension
+        const urlExt = imageUri.split('.').pop()?.toLowerCase();
+        if (urlExt && ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(urlExt)) {
+          fileExt = urlExt;
+        }
+      }
+      
+      const filename = `${timestamp}-${randomId}.${fileExt}`;
+      const filePath = `product-images/${filename}`;
+      
+      // Convert local image to blob for upload
+      let blob: Blob;
+      
+      try {
+        // Check if it's a data URL (base64)
+        if (imageUri.startsWith('data:')) {
+          // Convert data URL to blob
+          const response = await fetch(imageUri);
+          blob = await response.blob();
+        } else if (imageUri.startsWith('blob:') || imageUri.startsWith('http')) {
+          // Web platform or already a blob URL
+          const response = await fetch(imageUri);
+          blob = await response.blob();
+        } else {
+          // For React Native Web file URIs
+          const response = await fetch(imageUri);
+          blob = await response.blob();
+        }
+        
+        // Validate blob
+        if (!blob || blob.size === 0) {
+          throw new Error('Invalid image data');
+        }
+        
+        console.log('Blob created successfully:', {
+          size: blob.size,
+          type: blob.type
+        });
+        
+      } catch (fetchError) {
+        console.error('Failed to create blob from image URI:', fetchError);
+        throw new Error('Failed to process the selected image. Please try a different image.');
+      }
+      
+      // Upload to Supabase Storage
+      console.log('Attempting to upload to path:', filePath);
+      console.log('Blob size:', blob.size, 'bytes');
+      console.log('Blob type:', blob.type);
+      
+      const { data, error } = await supabase.storage
+        .from('products')
+        .upload(filePath, blob, {
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      if (error) {
+        console.error('Storage upload error:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        
+        // Provide more specific error messages
+        if (error.message?.includes('bucket')) {
+          throw new Error('Storage bucket not found. Please run the storage setup SQL script first.');
+        } else if (error.message?.includes('policy')) {
+          throw new Error('Permission denied. Please check storage policies.');
+        } else if (error.message?.includes('size')) {
+          throw new Error('Image file is too large. Please select a smaller image.');
+        } else {
+          throw new Error(`Failed to upload image: ${error.message}`);
+        }
+      }
+      
+      // Get public URL for the uploaded image
+      const { data: { publicUrl } } = supabase.storage
+        .from('products')
+        .getPublicUrl(filePath);
+      
+      if (!publicUrl) {
+        throw new Error('Failed to get public URL for uploaded image');
+      }
+      
       const newImage: UIProductImage = {
-        image_url: imageUri,
+        id: `temp-${timestamp}-${randomId}`, // Temporary ID for tracking
+        image_url: publicUrl,
         alt_text: `Product image ${images.length + 1}`
       };
       
@@ -616,227 +772,442 @@ function ProductModal({
       
       return newImage;
     } catch (error) {
-      console.error('Error handling image upload:', error);
+      console.error('Error uploading image:', error);
       throw error;
     } finally {
       setIsUploading(false);
     }
   };
 
+  const handleImageRemove = async (imageId?: string) => {
+    if (!imageId) return;
+    
+    try {
+      // Find the image to remove
+      const imageToRemove = images.find(img => img.id === imageId);
+      if (!imageToRemove) return;
+      
+      // Extract file path from the public URL
+      const url = imageToRemove.image_url;
+      if (url.includes('supabase.co/storage/v1/object/public/products/')) {
+        const filePath = url.split('supabase.co/storage/v1/object/public/products/')[1];
+        
+        if (filePath) {
+          // Remove from Supabase Storage
+          const { error } = await supabase.storage
+            .from('products')
+            .remove([filePath]);
+          
+          if (error) {
+            console.warn('Warning: Could not delete image from storage:', error);
+            // Continue with removal from UI even if storage deletion fails
+          }
+        }
+      }
+      
+      // Remove from local state
+      const updatedImages = images.filter(img => img.id !== imageId);
+      setImages(updatedImages);
+      
+    } catch (error) {
+      console.error('Error removing image:', error);
+      // Still remove from UI even if storage deletion fails
+      const updatedImages = images.filter(img => img.id !== imageId);
+      setImages(updatedImages);
+    }
+  };
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <LinearGradient colors={['#F5E6D3', '#E8D5C4']} style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <TouchableOpacity onPress={onClose}>
-            <Text style={styles.cancelButton}>Cancel</Text>
+        <BlurView intensity={30} tint="light" style={styles.modalHeader}>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={onClose}
+            disabled={isSubmitting}
+          >
+            <ArrowLeft size={20} color="#2D1B16" strokeWidth={2} />
           </TouchableOpacity>
-          <Text style={styles.modalTitle}>
-            {product ? 'Edit Product' : 'Add Product'}
-          </Text>
-          <TouchableOpacity onPress={handleSave}>
-            <Text style={styles.saveButton}>Save</Text>
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={styles.modalContent}>
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Product Name *</Text>
-            <TextInput
-              style={[
-                styles.input,
-                errors.name && styles.inputError
-              ]}
-              value={formData.name}
-              onChangeText={(text) => handleInputChange('name', text)}
-              placeholder="Enter product name"
-              editable={!isSubmitting}
-            />
-            {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.modalTitle}>
+              {product ? 'Edit Product' : 'Add New Product'}
+            </Text>
+            <Text style={styles.modalSubtitle}>
+              {product ? 'Update product details' : 'Fill in the product information'}
+            </Text>
           </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Description</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={formData.description}
-              onChangeText={(text) => handleInputChange('description', text)}
-              placeholder="Enter product description"
-              multiline
-              numberOfLines={3}
-              editable={!isSubmitting}
-            />
-          </View>
-
-          <View style={styles.formRow}>
-            <View style={styles.formGroupHalf}>
-              <Text style={styles.label}>Price *</Text>
-              <View style={{ position: 'relative' }}>
-                <Text style={styles.currencySymbol}>₹</Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    styles.priceInput,
-                    errors.price && styles.inputError
-                  ]}
-                  value={formData.price}
-                  onChangeText={(text) => {
-                    // Allow only numbers and one decimal point
-                    if (text === '' || /^\d*\.?\d*$/.test(text)) {
-                      handleInputChange('price', text);
-                    }
-                  }}
-                  placeholder="0"
-                  keyboardType="decimal-pad"
-                  editable={!isSubmitting}
-                />
-              </View>
-              {errors.price && <Text style={styles.errorText}>{errors.price}</Text>}
-            </View>
-
-            <View style={styles.formGroupHalf}>
-              <Text style={styles.label}>Original Price</Text>
-              <View style={{ position: 'relative' }}>
-                <Text style={styles.currencySymbol}>₹</Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    styles.priceInput,
-                    errors.original_price && styles.inputError
-                  ]}
-                  value={formData.original_price}
-                  onChangeText={(text) => {
-                    // Allow only numbers and one decimal point
-                    if (text === '' || /^\d*\.?\d*$/.test(text)) {
-                      handleInputChange('original_price', text);
-                    }
-                  }}
-                  placeholder="0"
-                  keyboardType="decimal-pad"
-                  editable={!isSubmitting}
-                />
-              </View>
-              {errors.original_price && <Text style={styles.errorText}>{errors.original_price}</Text>}
-            </View>
-          </View>
-
-          <View style={styles.formGroup}>
-            {isLoadingImages ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color="#007AFF" />
-                <Text style={styles.loadingText}>Loading images...</Text>
-              </View>
+          <TouchableOpacity 
+            style={[
+              styles.headerSaveButton,
+              isSubmitting && styles.headerSaveButtonDisabled
+            ]}
+            onPress={handleSave}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <View style={{ width: '100%' }}>
-                <ImageUploader
-                  images={images}
-                  onChange={handleImagesChange}
-                  onImageUpload={handleImageUpload}
-                  onRemoveImage={(imageId) => {
-                    if (imageId) {
-                      setDeletedImageIds(prev => [...prev, imageId]);
-                    }
-                  }}
-                  maxImages={5}
-                  isUploading={isUploading}
-                />
-                {errors.images && (
-                  <Text style={styles.errorText}>{errors.images}</Text>
-                )}
-              </View>
+              <Text style={styles.headerSaveButtonText}>
+                {product ? 'Update' : 'Save'}
+              </Text>
             )}
-          </View>
+          </TouchableOpacity>
+        </BlurView>
 
-          <View style={styles.formRow}>
-            <View style={styles.formGroupHalf}>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>SKU *</Text>
+        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+          {/* Basic Information Section */}
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <Package size={20} color="#2D1B16" strokeWidth={2} />
+              <Text style={styles.sectionTitle}>Basic Information</Text>
+            </View>
+            
+            <BlurView intensity={25} tint="light" style={styles.formCard}>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Product Name *</Text>
                 <TextInput
                   style={[
                     styles.input,
-                    skuError && styles.inputError
+                    errors.name && styles.inputError
                   ]}
-                  value={formData.sku || ''}
-                  onChangeText={(text) => handleInputChange('sku', text)}
-                  placeholder="Enter unique SKU"
-                  placeholderTextColor="#999"
+                  value={formData.name}
+                  onChangeText={(text) => handleInputChange('name', text)}
+                  placeholder="Enter product name"
+                  placeholderTextColor="#8B7355"
+                  editable={!isSubmitting}
                 />
-                {skuError && (
-                  <Text style={styles.errorText}>{skuError}</Text>
-                )}
+                {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
               </View>
-            </View>
 
-            <View style={styles.formGroupHalf}>
-              <Text style={styles.label}>Stock Quantity</Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  isNaN(Number(formData.stock_quantity)) && styles.inputError
-                ]}
-                value={formData.stock_quantity}
-                onChangeText={(text) => {
-                  // Only allow numbers
-                  if (text === '' || /^\d+$/.test(text)) {
-                    setFormData({ ...formData, stock_quantity: text });
-                  }
-                }}
-                placeholder="0"
-                keyboardType="number-pad"
-                editable={!isSubmitting}
-              />
-              {isNaN(Number(formData.stock_quantity)) && (
-                <Text style={styles.errorText}>Must be a number</Text>
-              )}
-            </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Description</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={formData.description}
+                  onChangeText={(text) => handleInputChange('description', text)}
+                  placeholder="Describe your product..."
+                  placeholderTextColor="#8B7355"
+                  multiline
+                  numberOfLines={4}
+                  editable={!isSubmitting}
+                />
+              </View>
+
+              <View style={styles.formRow}>
+                <View style={[styles.formGroupHalf, { zIndex: showCategoryDropdown ? 1000 : 1 }]}>
+                  <Text style={styles.label}>Category</Text>
+                  <View style={styles.dropdownWrapper}>
+                    <TouchableOpacity
+                      style={[
+                        styles.dropdownContainer,
+                        showCategoryDropdown && styles.dropdownContainerActive
+                      ]}
+                      onPress={() => !isSubmitting && setShowCategoryDropdown(!showCategoryDropdown)}
+                      disabled={isSubmitting}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.dropdownText,
+                        !formData.category && styles.dropdownPlaceholder
+                      ]}>
+                        {formData.category || 'Select category'}
+                      </Text>
+                      <ChevronDown 
+                        size={20} 
+                        color="#8B7355" 
+                        style={[
+                          styles.dropdownIcon,
+                          showCategoryDropdown && styles.dropdownIconRotated
+                        ]} 
+                      />
+                    </TouchableOpacity>
+
+                  </View>
+                </View>
+
+                <View style={styles.formGroupHalf}>
+                  <Text style={styles.label}>Brand</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.brand}
+                    onChangeText={(text) => handleInputChange('brand', text)}
+                    placeholder="Brand name"
+                    placeholderTextColor="#8B7355"
+                    editable={!isSubmitting}
+                  />
+                </View>
+              </View>
+            </BlurView>
           </View>
 
-          <View style={styles.formGroup}>
-            <TouchableOpacity
-              style={styles.toggleButton}
-              onPress={() => !isSubmitting && setFormData({ ...formData, is_active: !formData.is_active })}
-              disabled={isSubmitting}
-            >
-              <Text style={styles.toggleLabel}>
-                {formData.is_active ? 'Active' : 'Inactive'} Product
-              </Text>
-              <View style={[
-                styles.toggle,
-                formData.is_active ? styles.toggleActive : styles.toggleInactive,
-                isSubmitting && styles.toggleDisabled
-              ]}>
-                <View style={[
-                  styles.toggleThumb,
-                  formData.is_active ? styles.thumbActive : styles.thumbInactive,
-                  isSubmitting && styles.thumbDisabled
-                ]} />
+          {/* Pricing Section */}
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <DollarSign size={20} color="#2D1B16" strokeWidth={2} />
+              <Text style={styles.sectionTitle}>Pricing & Inventory</Text>
+            </View>
+            
+            <BlurView intensity={25} tint="light" style={styles.formCard}>
+              <View style={styles.formRow}>
+                <View style={styles.formGroupHalf}>
+                  <Text style={styles.label}>Selling Price *</Text>
+                  <View style={styles.priceInputContainer}>
+                    <Text style={styles.currencySymbol}>₹</Text>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        styles.priceInput,
+                        errors.price && styles.inputError
+                      ]}
+                      value={formData.price}
+                      onChangeText={(text) => {
+                        // Allow only numbers and one decimal point
+                        if (text === '' || /^\d*\.?\d*$/.test(text)) {
+                          handleInputChange('price', text);
+                        }
+                      }}
+                      placeholder="0.00"
+                      placeholderTextColor="#8B7355"
+                      keyboardType="decimal-pad"
+                      editable={!isSubmitting}
+                    />
+                  </View>
+                  {errors.price && <Text style={styles.errorText}>{errors.price}</Text>}
+                </View>
+
+                <View style={styles.formGroupHalf}>
+                  <Text style={styles.label}>Original Price</Text>
+                  <View style={styles.priceInputContainer}>
+                    <Text style={styles.currencySymbol}>₹</Text>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        styles.priceInput,
+                        errors.original_price && styles.inputError
+                      ]}
+                      value={formData.original_price}
+                      onChangeText={(text) => {
+                        // Allow only numbers and one decimal point
+                        if (text === '' || /^\d*\.?\d*$/.test(text)) {
+                          handleInputChange('original_price', text);
+                        }
+                      }}
+                      placeholder="0.00"
+                      placeholderTextColor="#8B7355"
+                      keyboardType="decimal-pad"
+                      editable={!isSubmitting}
+                    />
+                  </View>
+                  {errors.original_price && <Text style={styles.errorText}>{errors.original_price}</Text>}
+                </View>
               </View>
-            </TouchableOpacity>
+
+              <View style={styles.formRow}>
+                <View style={styles.formGroupHalf}>
+                  <Text style={styles.label}>SKU *</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      skuError && styles.inputError
+                    ]}
+                    value={formData.sku || ''}
+                    onChangeText={(text) => handleInputChange('sku', text)}
+                    placeholder="Enter unique SKU"
+                    placeholderTextColor="#8B7355"
+                    editable={!isSubmitting}
+                  />
+                  {skuError && (
+                    <Text style={styles.errorText}>{skuError}</Text>
+                  )}
+                </View>
+
+                <View style={styles.formGroupHalf}>
+                  <Text style={styles.label}>Stock Quantity</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      isNaN(Number(formData.stock_quantity)) && styles.inputError
+                    ]}
+                    value={formData.stock_quantity}
+                    onChangeText={(text) => {
+                      // Only allow numbers
+                      if (text === '' || /^\d+$/.test(text)) {
+                        setFormData({ ...formData, stock_quantity: text });
+                      }
+                    }}
+                    placeholder="0"
+                    placeholderTextColor="#8B7355"
+                    keyboardType="number-pad"
+                    editable={!isSubmitting}
+                  />
+                  {isNaN(Number(formData.stock_quantity)) && (
+                    <Text style={styles.errorText}>Must be a number</Text>
+                  )}
+                </View>
+              </View>
+            </BlurView>
+          </View>
+
+          {/* Product Images Section */}
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <Eye size={20} color="#2D1B16" strokeWidth={2} />
+              <Text style={styles.sectionTitle}>Product Images</Text>
+              <Text style={styles.sectionSubtitle}>Add up to 5 images</Text>
+            </View>
+            
+            <BlurView intensity={25} tint="light" style={styles.formCard}>
+              {isLoadingImages ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color="#2D1B16" />
+                  <Text style={styles.loadingText}>Loading images...</Text>
+                </View>
+              ) : (
+                <View style={styles.imageUploaderContainer}>
+                  <ImageUploader
+                    images={images}
+                    onChange={handleImagesChange}
+                    onImageUpload={handleImageUpload}
+                    onRemoveImage={handleImageRemove}
+                    maxImages={5}
+                    isUploading={isUploading}
+                  />
+                  {errors.images && (
+                    <Text style={styles.errorText}>{errors.images}</Text>
+                  )}
+                </View>
+              )}
+            </BlurView>
+          </View>
+
+          {/* Product Status Section */}
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <Settings size={20} color="#2D1B16" strokeWidth={2} />
+              <Text style={styles.sectionTitle}>Product Status</Text>
+            </View>
+            
+            <BlurView intensity={25} tint="light" style={styles.formCard}>
+              <TouchableOpacity
+                style={[
+                  styles.toggleButton,
+                  isSubmitting && styles.toggleButtonDisabled
+                ]}
+                onPress={() => !isSubmitting && setFormData({ ...formData, is_active: !formData.is_active })}
+                disabled={isSubmitting}
+                activeOpacity={0.7}
+              >
+                <View style={styles.toggleContent}>
+                  <View style={styles.toggleInfo}>
+                    <Text style={styles.toggleLabel}>
+                      {formData.is_active ? 'Product is Active' : 'Product is Inactive'}
+                    </Text>
+                    <Text style={styles.toggleDescription}>
+                      {formData.is_active 
+                        ? 'Customers can see and purchase this product' 
+                        : 'Product is hidden from customers'
+                      }
+                    </Text>
+                  </View>
+                  <View style={[
+                    styles.toggle,
+                    formData.is_active ? styles.toggleActive : styles.toggleInactive,
+                    isSubmitting && styles.toggleDisabled
+                  ]}>
+                    <View style={[
+                      styles.toggleThumb,
+                      formData.is_active ? styles.thumbActive : styles.thumbInactive,
+                      isSubmitting && styles.thumbDisabled
+                    ]} />
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </BlurView>
           </View>
           
-          <View style={styles.buttonContainer}>
+          {/* Action Buttons */}
+          <View style={styles.actionButtonsContainer}>
             <TouchableOpacity 
-              style={[styles.button, styles.cancelButton]}
+              style={[
+                styles.actionButton, 
+                styles.cancelActionButton,
+                isSubmitting && styles.actionButtonDisabled
+              ]}
               onPress={onClose}
               disabled={isSubmitting}
+              activeOpacity={0.7}
             >
-              <Text style={styles.buttonText}>Cancel</Text>
+              <Text style={styles.cancelActionButtonText}>Cancel</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={[
-                styles.button, 
-                styles.saveButton,
-                isSubmitting && styles.saveButtonDisabled
+                styles.actionButton, 
+                styles.saveActionButton,
+                isSubmitting && styles.saveActionButtonDisabled
               ]}
               onPress={handleSave}
               disabled={isSubmitting}
+              activeOpacity={0.7}
             >
-              <Text style={styles.buttonText}>
-                {isSubmitting ? 'Saving...' : product ? 'Update Product' : 'Add Product'}
-              </Text>
+              {isSubmitting ? (
+                <View style={styles.savingContainer}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={styles.saveActionButtonText}>Saving...</Text>
+                </View>
+              ) : (
+                <Text style={styles.saveActionButtonText}>
+                  {product ? 'Update Product' : 'Add Product'}
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
+          
+          {/* Bottom spacing */}
+          <View style={styles.bottomSpacing} />
         </ScrollView>
+        
+        {/* Category Dropdown - Positioned outside ScrollView to prevent clipping */}
+        {showCategoryDropdown && (
+          <>
+            <TouchableOpacity 
+              style={styles.dropdownBackdrop}
+              onPress={() => setShowCategoryDropdown(false)}
+              activeOpacity={1}
+            />
+            <View style={styles.dropdownOverlay}>
+              <BlurView intensity={20} tint="light" style={styles.dropdownMenu}>
+                <ScrollView 
+                  style={styles.dropdownScrollView}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled={true}
+                >
+                  {FURNITURE_CATEGORIES.map((category) => (
+                    <TouchableOpacity
+                      key={category}
+                      style={[
+                        styles.dropdownItem,
+                        formData.category === category && styles.dropdownItemSelected
+                      ]}
+                      onPress={() => {
+                        handleInputChange('category', category);
+                        setShowCategoryDropdown(false);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.dropdownItemText,
+                        formData.category === category && styles.dropdownItemTextSelected
+                      ]}>
+                        {category}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </BlurView>
+            </View>
+          </>
+        )}
       </LinearGradient>
     </Modal>
   );
@@ -1028,7 +1399,172 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
   },
-  // Add missing styles
+  // Header styles
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#8B7355',
+    marginTop: 2,
+    fontFamily: 'Inter-Regular',
+  },
+  headerSaveButton: {
+    backgroundColor: '#2D1B16',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  headerSaveButtonDisabled: {
+    backgroundColor: '#8B7355',
+    opacity: 0.7,
+  },
+  headerSaveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
+  },
+  // Section styles
+  sectionContainer: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2D1B16',
+    marginLeft: 8,
+    fontFamily: 'Inter-SemiBold',
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: '#8B7355',
+    marginLeft: 'auto',
+    fontFamily: 'Inter-Regular',
+  },
+  formCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  // Price input styles
+  priceInputContainer: {
+    position: 'relative',
+  },
+  // Image uploader styles
+  imageUploaderContainer: {
+    width: '100%',
+  },
+  // Enhanced toggle styles
+  toggleButtonDisabled: {
+    opacity: 0.6,
+  },
+  toggleContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  toggleInfo: {
+    flex: 1,
+    marginRight: 16,
+  },
+  toggleDescription: {
+    fontSize: 12,
+    color: '#8B7355',
+    marginTop: 4,
+    fontFamily: 'Inter-Regular',
+  },
+  // Action buttons
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cancelActionButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderWidth: 1.5,
+    borderColor: '#E8D5C4',
+  },
+  saveActionButton: {
+    backgroundColor: '#2D1B16',
+  },
+  actionButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveActionButtonDisabled: {
+    backgroundColor: '#8B7355',
+    opacity: 0.7,
+  },
+  cancelActionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2D1B16',
+    fontFamily: 'Inter-SemiBold',
+  },
+  saveActionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    fontFamily: 'Inter-SemiBold',
+  },
+  savingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bottomSpacing: {
+    height: 40,
+  },
+  // Loading and misc styles
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1046,10 +1582,96 @@ const styles = StyleSheet.create({
   thumbDisabled: {
     opacity: 0.5,
   },
-  buttonContainer: {
+  // Dropdown styles
+  dropdownWrapper: {
+    position: 'relative',
+    zIndex: 1,
+  },
+  dropdownBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 999,
+  },
+  dropdownOverlay: {
+    position: 'absolute',
+    top: 200, // Adjust based on where the category field is positioned
+    left: 20,
+    right: 20,
+    zIndex: 9999,
+    elevation: 20,
+  },
+  dropdownContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E8D5C4',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 16,
+    position: 'relative',
+  },
+  dropdownContainerActive: {
+    borderColor: '#2D1B16',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  },
+  dropdownText: {
+    fontSize: 16,
+    color: '#2D1B16',
+    flex: 1,
+  },
+  dropdownPlaceholder: {
+    color: '#8B7355',
+  },
+  dropdownIcon: {
+    marginLeft: 8,
+  },
+  dropdownIconRotated: {
+    transform: [{ rotate: '180deg' }],
+  },
+  dropdownMenuContainer: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    zIndex: 9999,
+    elevation: 20,
+  },
+  dropdownMenu: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E8D5C4',
+    marginTop: 4,
+    maxHeight: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  dropdownScrollView: {
+    maxHeight: 200,
+  },
+  dropdownItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(232, 213, 196, 0.3)',
+  },
+  dropdownItemSelected: {
+    backgroundColor: 'rgba(45, 27, 22, 0.1)',
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    color: '#2D1B16',
+  },
+  dropdownItemTextSelected: {
+    fontWeight: '600',
+    color: '#2D1B16',
   },
   modalContainer: {
     flex: 1,

@@ -1,13 +1,9 @@
 /**
- * Converts USD to INR and formats as a price string with Indian Rupee symbol
- * @param usdPrice - The price in USD to convert and format
+ * Formats a price in INR with Indian Rupee symbol and Indian number format
+ * @param inrPrice - The price in INR to format
  * @returns Formatted price string with ₹ symbol and Indian number format
  */
-export const formatPrice = (usdPrice: number): string => {
-  // Convert USD to INR (approximate conversion rate, you might want to use a real-time rate in production)
-  const USD_TO_INR = 83.50; // As of knowledge cutoff, 1 USD ≈ 83.50 INR
-  const inrPrice = usdPrice * USD_TO_INR;
-  
+export const formatPrice = (inrPrice: number): string => {
   // Format number with Indian numbering system (lakhs and crores)
   const formatter = new Intl.NumberFormat('en-IN', {
     style: 'currency',

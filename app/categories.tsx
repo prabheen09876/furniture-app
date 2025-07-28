@@ -17,21 +17,11 @@ import { Database } from '@/types/database';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPrice } from '@/utils/format';
+import { CATEGORIES, getCategoryDbValue } from '@/constants/categories';
 
 type Product = Database['public']['Tables']['products']['Row'];
 
 const { width: screenWidth } = Dimensions.get('window');
-
-const categories = [
-  { id: 'all', name: 'All', icon: '📦' },
-  { id: 'chairs', name: 'Chairs', icon: '🪑' },
-  { id: 'tables', name: 'Tables', icon: '🪵' },
-  { id: 'sofas', name: 'Sofas', icon: '🛋️' },
-  { id: 'beds', name: 'Beds', icon: '🛏️' },
-  { id: 'lamps', name: 'Lamps', icon: '💡' },
-  { id: 'decor', name: 'Decor', icon: '🖼️' },
-  { id: 'storage', name: 'Storage', icon: '🗄️' },
-];
 
 export default function CategoriesScreen() {
   const { filter } = useLocalSearchParams();
@@ -50,17 +40,24 @@ export default function CategoriesScreen() {
       let query = supabase
         .from('products')
         .select('*')
-        .eq('in_stock', true)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .gt('stock_quantity', 0); // Only show products with stock
 
       if (selectedCategory !== 'all') {
-        query = query.eq('category', selectedCategory);
+        // Use the helper function to get the database value
+        const dbValue = getCategoryDbValue(selectedCategory);
+        query = query.eq('category', dbValue);
       }
 
       const { data, error } = await query;
 
       if (error) throw error;
-      setProducts(data || []);
+      // Ensure the product data matches our expected type
+      const productsData = (data || []).map(product => ({
+        ...product,
+        rating: (product as any).rating || null
+      })) as Product[];
+      setProducts(productsData);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -101,7 +98,7 @@ export default function CategoriesScreen() {
           showsHorizontalScrollIndicator={false} 
           contentContainerStyle={styles.categoryScrollContent}
         >
-        {categories.map((category) => (
+        {CATEGORIES.map((category) => (
           <TouchableOpacity
             key={category.id}
             style={[
