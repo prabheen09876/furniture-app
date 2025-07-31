@@ -13,11 +13,11 @@ type Product = Database['public']['Tables']['products']['Row'];
 type ProductImage = Database['public']['Tables']['product_images']['Row'];
 type ProductImageInsert = Database['public']['Tables']['product_images']['Insert'];
 
-// UI Image type for form handling
+// UI Image type for form handling - must match ImageUploader component
 interface UIProductImage {
   id?: string;
   image_url: string;
-  alt_text?: string | null;
+  alt_text?: string; // Remove null to match ImageUploader component
 }
 
 // Convert UI images to database format
@@ -30,42 +30,39 @@ const toDBImages = (images: UIProductImage[], productId: string): ProductImageIn
   }));
 };
 
-// Predefined furniture categories
-const FURNITURE_CATEGORIES = [
-  'Chairs',
-  'Tables',
-  'Sofas',
-  'Beds',
-  'Dressers',
-  'Nightstands',
-  'Coffee Tables',
-  'Dining Tables',
-  'Dining Chairs',
-  'Bar Stools',
-  'Desks',
-  'Office Chairs',
-  'Bookshelves',
-  'Lamps',
-  'Sectionals',
-  'Loveseats',
-  'Cabinets',
-  'Storage',
-  'Mirrors',
-  'Rugs',
-  'Decor',
-  'Outdoor Furniture'
-];
+// Type for categories from database
+type Category = Database['public']['Tables']['categories']['Row'];
 
 export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
+  const [images, setImages] = useState<UIProductImage[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     fetchProducts();
+    fetchCategories();
   }, []);
+  
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      Alert.alert('Error', 'Failed to fetch categories');
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -234,21 +231,21 @@ export default function AdminProducts() {
 
               <View style={styles.productActions}>
                 <TouchableOpacity
-                  style={styles.actionButton}
+                  style={styles.productActionButton}
                   onPress={() => toggleProductStatus(product)}
                 >
                   <Eye size={16} color={product.is_active ? "#059669" : "#8B7355"} strokeWidth={2} />
                 </TouchableOpacity>
                 
                 <TouchableOpacity
-                  style={styles.actionButton}
+                  style={styles.productActionButton}
                   onPress={() => setCurrentProduct(product)}
                 >
                   <Edit3 size={16} color="#4F46E5" strokeWidth={2} />
                 </TouchableOpacity>
                 
                 <TouchableOpacity
-                  style={styles.actionButton}
+                  style={styles.productActionButton}
                   onPress={() => deleteProduct(product.id)}
                 >
                   <Trash2 size={16} color="#DC2626" strokeWidth={2} />
@@ -278,7 +275,6 @@ export default function AdminProducts() {
   );
 }
 
-// Product Modal Component
 function ProductModal({ 
   visible, 
   product, 
@@ -301,15 +297,17 @@ function ProductModal({
     stock_quantity: '0',
     is_active: true,
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [skuError, setSkuError] = useState<string | null>(null);
 
-  // Our local UI type for product images
-  interface UIProductImage {
-    id?: string;
-    image_url: string;
-    alt_text?: string;
-  }
+  // State for product images
+  const [images, setImages] = useState<UIProductImage[]>([]);
+  const [deletedImageIds, setDeletedImageIds] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingImages, setIsLoadingImages] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   // Form data interface with string values for form inputs
   interface ProductFormData {
@@ -336,17 +334,12 @@ function ProductModal({
       .map(img => ({
         id: img.id,
         image_url: img.image_url,
-        alt_text: img.alt_text || undefined
+        alt_text: img.alt_text || undefined // Convert null to undefined
       }));
   };
 
   // Convert UI image to database image format
-  const toDBImages = (uiImages: UIProductImage[], productId: string): Array<{
-    product_id: string;
-    image_url: string;
-    alt_text: string | null;
-    sort_order: number;
-  }> => {
+  const toDBImages = (uiImages: UIProductImage[], productId: string): ProductImageInsert[] => {
     if (!Array.isArray(uiImages)) return [];
     
     return uiImages
@@ -359,17 +352,12 @@ function ProductModal({
       .map((img, index) => ({
         product_id: productId,
         image_url: img.image_url,
-        alt_text: img.alt_text || null,
+        alt_text: img.alt_text || null, // Convert undefined to null for database
         sort_order: index
       }));
   };
 
-  const [images, setImages] = useState<UIProductImage[]>([]);
-  const [deletedImageIds, setDeletedImageIds] = useState<string[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingImages, setIsLoadingImages] = useState(false);
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  // Initialize form data and fetch categories when component mounts
 
   const fetchProductImages = useCallback(async (productId: string) => {
     try {
@@ -392,6 +380,27 @@ function ProductModal({
     }
   }, []);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+      
+      if (error) throw error;
+      
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      setCategories([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
   useEffect(() => {
     if (product) {
       setFormData({
@@ -399,7 +408,7 @@ function ProductModal({
         description: product.description || '',
         price: product.price?.toString() || '',
         original_price: product.original_price?.toString() || '',
-        category: product.category || '',
+        category: product.category || '',  // Ensure empty string fallback
         sku: product.sku || '',
         brand: product.brand || '',
         stock_quantity: product.stock_quantity?.toString() || '',
@@ -492,7 +501,7 @@ function ProductModal({
         price: parseFloat(formData.price) || 0,
         original_price: formData.original_price ? parseFloat(formData.original_price) : null,
         image_url: images[0]?.image_url || null,
-        category: formData.category,
+        category: formData.category || '',  // Use empty string instead of null
         sku: formData.sku,
         brand: formData.brand || null,
         stock_quantity: parseInt(formData.stock_quantity, 10) || 0,
@@ -894,7 +903,7 @@ function ProductModal({
               </View>
 
               <View style={styles.formRow}>
-                <View style={[styles.formGroupHalf, { zIndex: showCategoryDropdown ? 1000 : 1 }]}>
+                <View style={[styles.formGroupHalf, { zIndex: 1 }]}>
                   <Text style={styles.label}>Category</Text>
                   <View style={styles.dropdownWrapper}>
                     <TouchableOpacity
@@ -910,7 +919,7 @@ function ProductModal({
                         styles.dropdownText,
                         !formData.category && styles.dropdownPlaceholder
                       ]}>
-                        {formData.category || 'Select category'}
+                        {categories.find(c => c.slug === formData.category)?.name || 'Select category'}
                       </Text>
                       <ChevronDown 
                         size={20} 
@@ -1116,7 +1125,7 @@ function ProductModal({
                   ]}>
                     <View style={[
                       styles.toggleThumb,
-                      formData.is_active ? styles.thumbActive : styles.thumbInactive,
+                      formData.is_active && styles.thumbActive,
                       isSubmitting && styles.thumbDisabled
                     ]} />
                   </View>
@@ -1182,24 +1191,24 @@ function ProductModal({
                   showsVerticalScrollIndicator={false}
                   nestedScrollEnabled={true}
                 >
-                  {FURNITURE_CATEGORIES.map((category) => (
+                  {categories.map((category) => (
                     <TouchableOpacity
-                      key={category}
+                      key={category.id}
                       style={[
                         styles.dropdownItem,
-                        formData.category === category && styles.dropdownItemSelected
+                        formData.category === category.slug && styles.dropdownItemSelected
                       ]}
                       onPress={() => {
-                        handleInputChange('category', category);
+                        handleInputChange('category', category.slug);
                         setShowCategoryDropdown(false);
                       }}
                       activeOpacity={0.7}
                     >
                       <Text style={[
                         styles.dropdownItemText,
-                        formData.category === category && styles.dropdownItemTextSelected
+                        formData.category === category.slug && styles.dropdownItemTextSelected
                       ]}>
-                        {category}
+                        {category.name}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -1213,6 +1222,7 @@ function ProductModal({
   );
 }
 
+// Styles for the component
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1390,7 +1400,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
   },
-  actionButton: {
+  productActionButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -1597,11 +1607,12 @@ const styles = StyleSheet.create({
   },
   dropdownOverlay: {
     position: 'absolute',
-    top: 200, // Adjust based on where the category field is positioned
+    top: 200, // Position aligned with category field
     left: 20,
     right: 20,
     zIndex: 9999,
     elevation: 20,
+    maxHeight: 300, // Limit height to prevent overflow
   },
   dropdownContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.7)',
@@ -1790,8 +1801,7 @@ const styles = StyleSheet.create({
   thumbActive: {
     transform: [{ translateX: 22 }],
   },
-  thumbInactive: {
-  },
+  // Button styles
   button: {
     flex: 1,
     padding: 15,
@@ -1820,6 +1830,7 @@ const styles = StyleSheet.create({
     color: '#2D1B16',
     fontSize: 16,
   },
+  // Use saveActionButtonText instead for consistency
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 16,

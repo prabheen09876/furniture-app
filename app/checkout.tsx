@@ -20,15 +20,16 @@ export default function CheckoutScreen() {
   const { user } = useAuth();
   const { items, getTotalPrice, removeFromCart } = useCart();
   const [loading, setLoading] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [landmark, setLandmark] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [zip, setZip] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardName, setCardName] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
-  const [step, setStep] = useState(1); // 1: Shipping, 2: Payment, 3: Review
+  const [alternatePhone, setAlternatePhone] = useState('');
+  const [deliveryInstructions, setDeliveryInstructions] = useState('');
+  const [step, setStep] = useState(1); // 1: Shipping, 2: Review (skip payment for pay-on-delivery)
 
   if (!user) {
     return (
@@ -76,15 +77,19 @@ export default function CheckoutScreen() {
     
     setLoading(true);
     try {
+      // Generate unique order number
+      const orderNumber = `ORD-${Date.now().toString().slice(-8)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      
       // Create order in the database
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
           user_id: user.id,
+          order_number: orderNumber,
+          subtotal: getTotalPrice(),
           total_amount: getTotalPrice(),
-          shipping_address: `${address}, ${city}, ${state} ${zip}`,
-          status: 'pending',
-          payment_status: 'paid', // In a real app, this would be handled by a payment processor
+          shipping_address: `${fullName}\n${phone}\n${address}${landmark ? ', ' + landmark : ''}\n${city}, ${state} ${zip}${alternatePhone ? '\nAlt: ' + alternatePhone : ''}${deliveryInstructions ? '\nInstructions: ' + deliveryInstructions : ''}`,
+          status: 'pending'
         })
         .select();
 
@@ -95,7 +100,8 @@ export default function CheckoutScreen() {
         order_id: orderData[0].id,
         product_id: item.product_id,
         quantity: item.quantity,
-        price: item.products.price,
+        unit_price: item.products.price,
+        total_price: item.products.price * item.quantity,
       }));
       
       const { error: itemsError } = await supabase
@@ -110,13 +116,13 @@ export default function CheckoutScreen() {
       }
       
       Alert.alert(
-        "Order Placed Successfully",
-        "Thank you for your order! You will receive a confirmation email shortly.",
-        [{ text: "OK", onPress: () => router.replace('/') }]
+        "Order Placed Successfully!",
+        `Your order has been placed successfully. Order will be delivered with pay-on-delivery option.\n\nOrder Number: ${orderNumber}`,
+        [{ text: "View Orders", onPress: () => router.replace('/orders') }]
       );
     } catch (error) {
       console.error('Error placing order:', error);
-      Alert.alert("Error", "There was a problem placing your order. Please try again.");
+      Alert.alert('Error', 'Failed to place order. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -124,18 +130,12 @@ export default function CheckoutScreen() {
 
   const validateForm = () => {
     if (step === 1) {
-      if (!address || !city || !state || !zip) {
-        Alert.alert("Error", "Please fill in all shipping information");
+      if (!fullName || !phone || !address || !city || !state || !zip) {
+        Alert.alert("Error", "Please fill in all required shipping information");
         return false;
       }
-      return true;
-    } else if (step === 2) {
-      if (!cardNumber || !cardName || !cardExpiry || !cardCvv) {
-        Alert.alert("Error", "Please fill in all payment information");
-        return false;
-      }
-      if (cardNumber.replace(/\s/g, '').length !== 16) {
-        Alert.alert("Error", "Please enter a valid card number");
+      if (phone.length < 10) {
+        Alert.alert("Error", "Please enter a valid phone number");
         return false;
       }
       return true;
@@ -143,22 +143,8 @@ export default function CheckoutScreen() {
     return true;
   };
 
-  const formatCardNumber = (text: string) => {
-    const cleaned = text.replace(/\D/g, '');
-    const formatted = cleaned.replace(/(.{4})/g, '$1 ').trim();
-    return formatted.substring(0, 19); // 16 digits + 3 spaces
-  };
-
-  const formatExpiry = (text: string) => {
-    const cleaned = text.replace(/\D/g, '');
-    if (cleaned.length > 2) {
-      return `${cleaned.substring(0, 2)}/${cleaned.substring(2, 4)}`;
-    }
-    return cleaned;
-  };
-
   const nextStep = () => {
-    if (validateForm()) {
+    if (step < 2) {
       setStep(step + 1);
     }
   };
@@ -168,13 +154,21 @@ export default function CheckoutScreen() {
   };
 
   const renderStepIndicator = () => (
-    <View style={styles.stepIndicator}>
-      <View style={[styles.stepDot, step >= 1 && styles.activeStepDot]} />
+    <BlurView intensity={25} tint="light" style={styles.stepIndicator}>
+      <View style={styles.stepContainer}>
+        <View style={[styles.stepDot, step >= 1 && styles.activeStepDot]}>
+          <Text style={[styles.stepNumber, step >= 1 && styles.activeStepNumber]}>1</Text>
+        </View>
+        <Text style={[styles.stepLabel, step >= 1 && styles.activeStepLabel]}>Shipping</Text>
+      </View>
       <View style={styles.stepLine} />
-      <View style={[styles.stepDot, step >= 2 && styles.activeStepDot]} />
-      <View style={styles.stepLine} />
-      <View style={[styles.stepDot, step >= 3 && styles.activeStepDot]} />
-    </View>
+      <View style={styles.stepContainer}>
+        <View style={[styles.stepDot, step >= 2 && styles.activeStepDot]}>
+          <Text style={[styles.stepNumber, step >= 2 && styles.activeStepNumber]}>2</Text>
+        </View>
+        <Text style={[styles.stepLabel, step >= 2 && styles.activeStepLabel]}>Review</Text>
+      </View>
+    </BlurView>
   );
 
   const renderShippingForm = () => (
@@ -184,20 +178,59 @@ export default function CheckoutScreen() {
         <Text style={styles.formTitle}>Shipping Information</Text>
       </View>
       
+      {/* Contact Information */}
       <BlurView intensity={40} style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>Address</Text>
+        <Text style={styles.inputLabel}>Full Name *</Text>
+        <TextInput
+          style={styles.input}
+          value={fullName}
+          onChangeText={setFullName}
+          placeholder="Enter your full name"
+          placeholderTextColor="#8B7355"
+        />
+      </BlurView>
+      
+      <BlurView intensity={40} style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>Phone Number *</Text>
+        <TextInput
+          style={styles.input}
+          value={phone}
+          onChangeText={setPhone}
+          placeholder="Enter your phone number"
+          placeholderTextColor="#8B7355"
+          keyboardType="phone-pad"
+          maxLength={15}
+        />
+      </BlurView>
+      
+      {/* Address Information */}
+      <BlurView intensity={40} style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>Street Address *</Text>
         <TextInput
           style={styles.input}
           value={address}
           onChangeText={setAddress}
-          placeholder="Street Address"
+          placeholder="House/Flat No., Street Name"
+          placeholderTextColor="#8B7355"
+          multiline
+          numberOfLines={2}
+        />
+      </BlurView>
+      
+      <BlurView intensity={40} style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>Landmark (Optional)</Text>
+        <TextInput
+          style={styles.input}
+          value={landmark}
+          onChangeText={setLandmark}
+          placeholder="Near by landmark"
           placeholderTextColor="#8B7355"
         />
       </BlurView>
       
       <View style={styles.rowInputs}>
         <BlurView intensity={40} style={[styles.inputContainer, { flex: 2, marginRight: 10 }]}>
-          <Text style={styles.inputLabel}>City</Text>
+          <Text style={styles.inputLabel}>City *</Text>
           <TextInput
             style={styles.input}
             value={city}
@@ -208,7 +241,7 @@ export default function CheckoutScreen() {
         </BlurView>
         
         <BlurView intensity={40} style={[styles.inputContainer, { flex: 1 }]}>
-          <Text style={styles.inputLabel}>State</Text>
+          <Text style={styles.inputLabel}>State *</Text>
           <TextInput
             style={styles.input}
             value={state}
@@ -220,7 +253,7 @@ export default function CheckoutScreen() {
       </View>
       
       <BlurView intensity={40} style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>Zip Code</Text>
+        <Text style={styles.inputLabel}>Zip Code *</Text>
         <TextInput
           style={styles.input}
           value={zip}
@@ -232,81 +265,44 @@ export default function CheckoutScreen() {
         />
       </BlurView>
       
+      {/* Additional Information */}
+      <BlurView intensity={40} style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>Alternate Phone (Optional)</Text>
+        <TextInput
+          style={styles.input}
+          value={alternatePhone}
+          onChangeText={setAlternatePhone}
+          placeholder="Alternate contact number"
+          placeholderTextColor="#8B7355"
+          keyboardType="phone-pad"
+          maxLength={15}
+        />
+      </BlurView>
+      
+      <BlurView intensity={40} style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>Delivery Instructions (Optional)</Text>
+        <TextInput
+          style={styles.input}
+          value={deliveryInstructions}
+          onChangeText={setDeliveryInstructions}
+          placeholder="Any special delivery instructions"
+          placeholderTextColor="#8B7355"
+          multiline
+          numberOfLines={3}
+        />
+      </BlurView>
+      
+      {/* Contact Notice */}
+      <BlurView intensity={25} style={styles.contactNotice}>
+        <Text style={styles.contactNoticeTitle}>📞 We'll Contact You Soon!</Text>
+        <Text style={styles.contactNoticeText}>
+          Our team will contact you via email and phone call to confirm your order details and delivery schedule. Please ensure your contact information is correct.
+        </Text>
+      </BlurView>
+      
       <TouchableOpacity style={styles.continueButton} onPress={nextStep}>
-        <Text style={styles.continueButtonText}>Continue to Payment</Text>
+        <Text style={styles.continueButtonText}>Continue to Review</Text>
       </TouchableOpacity>
-    </View>
-  );
-
-  const renderPaymentForm = () => (
-    <View style={styles.formContainer}>
-      <View style={styles.formHeader}>
-        <CreditCard size={20} color="#2D1B16" strokeWidth={2} />
-        <Text style={styles.formTitle}>Payment Information</Text>
-      </View>
-      
-      <BlurView intensity={40} style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>Card Number</Text>
-        <TextInput
-          style={styles.input}
-          value={cardNumber}
-          onChangeText={(text) => setCardNumber(formatCardNumber(text))}
-          placeholder="1234 5678 9012 3456"
-          placeholderTextColor="#8B7355"
-          keyboardType="numeric"
-          maxLength={19} // 16 digits + 3 spaces
-        />
-      </BlurView>
-      
-      <BlurView intensity={40} style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>Cardholder Name</Text>
-        <TextInput
-          style={styles.input}
-          value={cardName}
-          onChangeText={setCardName}
-          placeholder="John Doe"
-          placeholderTextColor="#8B7355"
-        />
-      </BlurView>
-      
-      <View style={styles.rowInputs}>
-        <BlurView intensity={40} style={[styles.inputContainer, { flex: 1, marginRight: 10 }]}>
-          <Text style={styles.inputLabel}>Expiry Date</Text>
-          <TextInput
-            style={styles.input}
-            value={cardExpiry}
-            onChangeText={(text) => setCardExpiry(formatExpiry(text))}
-            placeholder="MM/YY"
-            placeholderTextColor="#8B7355"
-            keyboardType="numeric"
-            maxLength={5} // MM/YY
-          />
-        </BlurView>
-        
-        <BlurView intensity={40} style={[styles.inputContainer, { flex: 1 }]}>
-          <Text style={styles.inputLabel}>CVV</Text>
-          <TextInput
-            style={styles.input}
-            value={cardCvv}
-            onChangeText={setCardCvv}
-            placeholder="123"
-            placeholderTextColor="#8B7355"
-            keyboardType="numeric"
-            maxLength={3}
-            secureTextEntry
-          />
-        </BlurView>
-      </View>
-      
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.backButton2} onPress={prevStep}>
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.continueButton2} onPress={nextStep}>
-          <Text style={styles.continueButtonText}>Review Order</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 
@@ -317,8 +313,9 @@ export default function CheckoutScreen() {
         <Text style={styles.formTitle}>Review Your Order</Text>
       </View>
       
+      {/* Order Items */}
       <BlurView intensity={40} style={styles.reviewSection}>
-        <Text style={styles.reviewSectionTitle}>Items</Text>
+        <Text style={styles.reviewSectionTitle}>Items ({items.length})</Text>
         {items.map((item) => (
           <View key={item.id} style={styles.reviewItem}>
             <Text style={styles.reviewItemName} numberOfLines={1}>
@@ -338,9 +335,63 @@ export default function CheckoutScreen() {
         </View>
       </BlurView>
 
+      {/* Shipping Details */}
+      <BlurView intensity={40} style={styles.reviewSection}>
+        <Text style={styles.reviewSectionTitle}>Shipping Details</Text>
+        <View style={styles.reviewItem}>
+          <Text style={styles.reviewItemName}>Name:</Text>
+          <Text style={styles.reviewItemPrice}>{fullName}</Text>
+        </View>
+        <View style={styles.reviewItem}>
+          <Text style={styles.reviewItemName}>Phone:</Text>
+          <Text style={styles.reviewItemPrice}>{phone}</Text>
+        </View>
+        <View style={styles.reviewItem}>
+          <Text style={styles.reviewItemName}>Address:</Text>
+          <Text style={styles.reviewItemPrice} numberOfLines={3}>
+            {address}{landmark ? `, ${landmark}` : ''}
+          </Text>
+        </View>
+        <View style={styles.reviewItem}>
+          <Text style={styles.reviewItemName}>City:</Text>
+          <Text style={styles.reviewItemPrice}>{city}, {state} {zip}</Text>
+        </View>
+        {alternatePhone && (
+          <View style={styles.reviewItem}>
+            <Text style={styles.reviewItemName}>Alt Phone:</Text>
+            <Text style={styles.reviewItemPrice}>{alternatePhone}</Text>
+          </View>
+        )}
+        {deliveryInstructions && (
+          <View style={styles.reviewItem}>
+            <Text style={styles.reviewItemName}>Instructions:</Text>
+            <Text style={styles.reviewItemPrice} numberOfLines={2}>
+              {deliveryInstructions}
+            </Text>
+          </View>
+        )}
+      </BlurView>
+
+      {/* Payment Method */}
+      <BlurView intensity={40} style={styles.reviewSection}>
+        <Text style={styles.reviewSectionTitle}>Payment Method</Text>
+        <View style={styles.reviewItem}>
+          <Text style={styles.reviewItemName}>💰 Pay on Delivery</Text>
+          <Text style={styles.reviewItemPrice}>Cash/Card</Text>
+        </View>
+      </BlurView>
+
+      {/* Contact Notice */}
+      <BlurView intensity={25} style={styles.contactNotice}>
+        <Text style={styles.contactNoticeTitle}>📞 Order Confirmation</Text>
+        <Text style={styles.contactNoticeText}>
+          After placing your order, our team will contact you within 24 hours via email and phone to confirm order details and schedule delivery.
+        </Text>
+      </BlurView>
+
       <View style={styles.buttonContainer}>
         <TouchableOpacity 
-          style={styles.backButton} 
+          style={styles.backButton2} 
           onPress={prevStep}
         >
           <Text style={styles.backButtonText}>Back</Text>
@@ -371,8 +422,7 @@ export default function CheckoutScreen() {
       <ScrollView style={styles.scrollView}>
         {renderStepIndicator()}
         {step === 1 && renderShippingForm()}
-        {step === 2 && renderPaymentForm()}
-        {step === 3 && renderOrderReview()}
+        {step === 2 && renderOrderReview()}
       </ScrollView>
     </LinearGradient>
   );
@@ -381,25 +431,62 @@ export default function CheckoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
   },
   backButton: {
-    padding: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '600',
     color: '#2D1B16',
   },
   placeholder: {
     width: 40,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  authPrompt: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  authTitle: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#2D1B16',
+    marginBottom: 8,
+  },
+  authSubtitle: {
+    fontSize: 16,
+    color: '#8B7355',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  authButton: {
+    backgroundColor: '#2D1B16',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+  },
+  authButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   emptyContainer: {
     flex: 1,
@@ -417,147 +504,215 @@ const styles = StyleSheet.create({
     color: '#8B7355',
   },
   shopButton: {
-    backgroundColor: '#F5E6D3',
-    padding: 10,
+    backgroundColor: '#2D1B16',
+    padding: 12,
     borderRadius: 10,
     marginTop: 20,
   },
   shopButtonText: {
-    fontSize: 18,
-    color: '#2D1B16',
-  },
-  formContainer: {
-    padding: 20,
-  },
-  formHeader: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  formTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2D1B16',
-    marginLeft: 10,
-  },
-  inputContainer: {
-    backgroundColor: '#F5E6D3',
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 18,
-    color: '#8B7355',
-    marginBottom: 5,
-  },
-  input: {
-    fontSize: 18,
-    color: '#2D1B16',
-  },
-  rowInputs: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  continueButton: {
-    backgroundColor: '#F5E6D3',
-    padding: 10,
-    borderRadius: 10,
-    marginTop: 20,
-  },
-  continueButtonText: {
-    fontSize: 18,
-    color: '#2D1B16',
-  },
-  backButton2: {
-    backgroundColor: '#F5E6D3',
-    padding: 10,
-    borderRadius: 10,
-    marginRight: 10,
-  },
-  backButtonText: {
-    fontSize: 18,
-    color: '#2D1B16',
-  },
-  continueButton2: {
-    backgroundColor: '#F5E6D3',
-    padding: 10,
-    borderRadius: 10,
-  },
-  disabledButton: {
-    opacity: 0.5,
+    fontSize: 16,
+    color: 'white',
+    fontWeight: '600',
   },
   stepIndicator: {
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 20,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     alignItems: 'center',
-    padding: 20,
+    paddingVertical: 16,
+  },
+  stepContainer: {
+    alignItems: 'center',
   },
   stepDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#8B7355',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(139, 115, 85, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   activeStepDot: {
     backgroundColor: '#2D1B16',
   },
+  stepNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8B7355',
+  },
+  activeStepNumber: {
+    color: 'white',
+  },
+  stepLabel: {
+    fontSize: 12,
+    color: '#8B7355',
+    fontWeight: '500',
+  },
+  activeStepLabel: {
+    color: '#2D1B16',
+    fontWeight: '600',
+  },
   stepLine: {
-    width: 20,
+    width: 40,
     height: 2,
     backgroundColor: '#8B7355',
+    opacity: 0.3,
   },
-  reviewSection: {
-    backgroundColor: '#F5E6D3',
-    padding: 10,
-    borderRadius: 10,
+  formContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 100,
+  },
+  formHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 20,
   },
-  reviewSectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  formTitle: {
+    fontSize: 20,
+    fontWeight: '600',
     color: '#2D1B16',
-    marginBottom: 5,
+    marginLeft: 10,
+  },
+  inputContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  inputLabel: {
+    fontSize: 14,
+    color: '#8B7355',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  input: {
+    fontSize: 16,
+    color: '#2D1B16',
+    fontWeight: '500',
+  },
+  rowInputs: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  continueButton: {
+    backgroundColor: '#2D1B16',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  continueButtonText: {
+    fontSize: 16,
+    color: 'white',
+    fontWeight: '600',
+  },
+  backButton2: {
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#2D1B16',
+    fontWeight: '600',
+  },
+  continueButton2: {
+    backgroundColor: '#2D1B16',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flex: 1,
+    marginLeft: 12,
+    alignItems: 'center',
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  reviewSection: {
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  reviewSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2D1B16',
+    marginBottom: 12,
   },
   reviewItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   reviewItemName: {
-    fontSize: 18,
+    fontSize: 14,
     color: '#2D1B16',
+    flex: 1,
+    marginRight: 12,
   },
   reviewItemPrice: {
-    fontSize: 18,
+    fontSize: 14,
     color: '#8B7355',
+    fontWeight: '600',
   },
   reviewTotal: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(139, 115, 85, 0.2)',
   },
   reviewTotalText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#2D1B16',
   },
   reviewTotalPrice: {
     fontSize: 18,
-    color: '#8B7355',
-  },
-  reviewText: {
-    fontSize: 18,
-    color: '#8B7355',
+    fontWeight: '700',
+    color: '#2D1B16',
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+  },
+  contactNotice: {
+    backgroundColor: 'rgba(45, 27, 22, 0.1)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 27, 22, 0.2)',
+  },
+  contactNoticeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2D1B16',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  contactNoticeText: {
+    fontSize: 14,
+    color: '#8B7355',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

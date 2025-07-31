@@ -29,7 +29,7 @@ interface ProductGridProps {
 
 const { width: screenWidth } = Dimensions.get('window');
 const CARD_MARGIN = 8;
-const CARD_WIDTH = (screenWidth - 80) ; // 16 padding on each side + 8 margin between cards
+const CARD_WIDTH = (screenWidth - 120) / 2; // Two cards per row with margins
 
 export const ProductGrid: React.FC<ProductGridProps> = ({ products, onAddToCart }) => {
   return (
@@ -94,8 +94,9 @@ const styles = StyleSheet.create({
   productsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
-    padding: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
   },
   productCard: {
     width: CARD_WIDTH,

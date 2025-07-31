@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -17,9 +18,21 @@ import { Database } from '@/types/database';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPrice } from '@/utils/format';
-import { CATEGORIES, getCategoryDbValue } from '@/constants/categories';
 
 type Product = Database['public']['Tables']['products']['Row'];
+
+// Define Category type since it might not be in database types yet
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  icon_url: string | null;
+  description: string | null;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -28,15 +41,76 @@ export default function CategoriesScreen() {
   const { user } = useAuth();
   const { addToCart } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState(filter?.toString() || 'all');
+
+  // Update selected category when filter parameter changes
+  useEffect(() => {
+    if (filter) {
+      setSelectedCategory(filter.toString());
+    }
+  }, [filter]);
   const [loading, setLoading] = useState(true);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  useEffect(() => {
+    fetchCategories();
+    fetchProducts();
+  }, []);
 
   useEffect(() => {
     fetchProducts();
   }, [selectedCategory]);
 
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+
+      // Add "All" category at the beginning
+      const allCategories = [
+        { 
+          id: 'all', 
+          name: 'All', 
+          slug: 'all', 
+          icon_url: null,
+          description: 'View all products',
+          is_active: true,
+          sort_order: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        } as Category,
+        ...(data || [])
+      ];
+
+      setCategories(allCategories);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      // Fallback to default categories if database fetch fails
+      const defaultCategories: Category[] = [
+        { id: 'all', name: 'All', slug: 'all', icon_url: null, description: 'View all products', is_active: true, sort_order: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: 'chairs', name: 'Chairs', slug: 'chairs', icon_url: null, description: 'Comfortable seating', is_active: true, sort_order: 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: 'tables', name: 'Tables', slug: 'tables', icon_url: null, description: 'Dining and work tables', is_active: true, sort_order: 2, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: 'sofas', name: 'Sofas', slug: 'sofas', icon_url: null, description: 'Living room furniture', is_active: true, sort_order: 3, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: 'beds', name: 'Beds', slug: 'beds', icon_url: null, description: 'Bedroom furniture', is_active: true, sort_order: 4, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: 'lamps', name: 'Lamps', slug: 'lamps', icon_url: null, description: 'Lighting solutions', is_active: true, sort_order: 5, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: 'decor', name: 'Decor', slug: 'decor', icon_url: null, description: 'Home decorations', is_active: true, sort_order: 6, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: 'storage', name: 'Storage', slug: 'storage', icon_url: null, description: 'Storage solutions', is_active: true, sort_order: 7, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+      ];
+      setCategories(defaultCategories);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
   const fetchProducts = async () => {
     try {
+      setLoading(true);
       let query = supabase
         .from('products')
         .select('*')
@@ -44,9 +118,8 @@ export default function CategoriesScreen() {
         .gt('stock_quantity', 0); // Only show products with stock
 
       if (selectedCategory !== 'all') {
-        // Use the helper function to get the database value
-        const dbValue = getCategoryDbValue(selectedCategory);
-        query = query.eq('category', dbValue);
+        // Filter by category slug
+        query = query.eq('category', selectedCategory);
       }
 
       const { data, error } = await query;
@@ -93,39 +166,71 @@ export default function CategoriesScreen() {
 
       {/* Category Scroll */}
       <View style={styles.categoryScrollContainer}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          contentContainerStyle={styles.categoryScrollContent}
-        >
-        {CATEGORIES.map((category) => (
-          <TouchableOpacity
-            key={category.id}
-            style={[
-              styles.categoryButton,
-              selectedCategory === category.id && styles.categoryButtonActive,
-            ]}
-            onPress={() => setSelectedCategory(category.id)}
+        {categoriesLoading ? (
+          <View style={styles.categoriesLoadingContainer}>
+            <ActivityIndicator size="small" color="#2D1B16" />
+            <Text style={styles.loadingText}>Loading categories...</Text>
+          </View>
+        ) : (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.categoryScrollContent}
           >
-            <BlurView
-              intensity={selectedCategory === category.id ? 60 : 30}
-              style={styles.categoryButtonInner}
-            >
-              <Text style={styles.categoryIcon}>
-                {category.icon}
-              </Text>
-              <Text
-                style={[
-                  styles.categoryButtonText,
-                  selectedCategory === category.id && styles.categoryButtonTextActive,
-                ]}
-              >
-                {category.name}
-              </Text>
-            </BlurView>
-          </TouchableOpacity>
-        ))}
-        </ScrollView>
+            {categories.map((category) => {
+              // Get fallback icon based on category slug
+              const getFallbackIcon = (slug: string) => {
+                const iconMap: { [key: string]: string } = {
+                  'all': '📦',
+                  'chairs': '🪑',
+                  'tables': '🪵',
+                  'sofas': '🛋️',
+                  'beds': '🛏️',
+                  'lamps': '💡',
+                  'decor': '🖼️',
+                  'storage': '🗄️'
+                };
+                return iconMap[slug] || '📦';
+              };
+
+              return (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[
+                    styles.categoryButton,
+                    selectedCategory === category.slug && styles.categoryButtonActive,
+                  ]}
+                  onPress={() => setSelectedCategory(category.slug)}
+                >
+                  <BlurView
+                    intensity={selectedCategory === category.slug ? 60 : 30}
+                    style={styles.categoryButtonInner}
+                  >
+                    {category.icon_url ? (
+                      <Image 
+                        source={{ uri: category.icon_url }} 
+                        style={styles.categoryIconImage} 
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <Text style={styles.categoryIcon}>
+                        {getFallbackIcon(category.slug)}
+                      </Text>
+                    )}
+                    <Text
+                      style={[
+                        styles.categoryButtonText,
+                        selectedCategory === category.slug && styles.categoryButtonTextActive,
+                      ]}
+                    >
+                      {category.name}
+                    </Text>
+                  </BlurView>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
       </View>
 
       {/* Products Grid */}
@@ -250,6 +355,24 @@ const styles = StyleSheet.create({
   categoryIcon: {
     fontSize: 28,
     marginBottom: 8,
+  },
+  categoryIconImage: {
+    width: 32,
+    height: 32,
+    marginBottom: 8,
+  },
+  categoriesLoadingContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#8B7355',
+    fontWeight: '500',
   },
   categoryButtonText: {
     fontSize: 14,

@@ -30,7 +30,7 @@ export default function ProfileScreen() {
       <LinearGradient colors={['#F5E6D3', '#E8D5C4']} style={styles.container}>
         <View style={styles.authPrompt}>
           <User size={64} color="#8B7355" strokeWidth={1} />
-          <Text style={styles.authTitle}>Welcome to Casa</Text>
+          <Text style={styles.authTitle}>Welcome to AceQuint</Text>
           <Text style={styles.authSubtitle}>Sign in to access your profile and orders</Text>
           <TouchableOpacity
             style={styles.authButton}

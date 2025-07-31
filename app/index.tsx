@@ -19,7 +19,8 @@ import { Search, Bell, ChevronDown } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { ProductGrid } from './ProductGrid';
-import { getHomePageCategories } from '@/constants/categories';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/contexts/CartContext';
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('en-IN', {
@@ -29,128 +30,46 @@ const formatPrice = (price: number) => {
     maximumFractionDigits: 0,
   }).format(price);
 };
-import { Database } from '@/types/database';
-import { useAuth } from '@/contexts/AuthContext';
-import { useCart } from '@/contexts/CartContext';
 
-type Product = Database['public']['Tables']['products']['Row'];
+type Product = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  original_price?: number | null;
+  image_url?: string | null;
+  category: string;
+  is_active: boolean;
+  stock_quantity: number;
+  created_at: string;
+  updated_at: string;
+};
 
 const { width: screenWidth } = Dimensions.get('window');
 
-// Get categories for home page display
-const categories = getHomePageCategories();
-
 // Layout constants
-const HEADER_HEIGHT = Platform.OS === 'ios' ? 80 : 80; // Reduced from 100 to 80
+const HEADER_HEIGHT = Platform.OS === 'ios' ? 80 : 80;
 const CATEGORIES_HEIGHT = 160;
 const TAB_BAR_HEIGHT = 60;
 const SCREEN_PADDING = 16;
 const TOP_SECTION_HEIGHT = HEADER_HEIGHT + CATEGORIES_HEIGHT;
 
-const getGreeting = () => {
-  const currentHour = new Date().getHours();
-  
-  if (currentHour >= 5 && currentHour < 12) {
-    return 'Good Morning';
-  } else if (currentHour >= 12 && currentHour < 17) {
-    return 'Good Afternoon';
-  } else if (currentHour >= 17 && currentHour < 21) {
-    return 'Good Evening';
-  } else {
-    return 'Good Night';
-  }
-};
-
-const renderHeader = (originalSearchBarOpacity: Animated.AnimatedInterpolation<number>, headerContentOpacity: Animated.AnimatedInterpolation<number>) => (
-  <View style={styles.headerContainer}>
-    <Animated.View style={[styles.header, { opacity: headerContentOpacity }]}>
-      <View>
-        <Text style={styles.greeting}>{getGreeting()}</Text>
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>Casa</Text>
-          <View style={styles.notificationButton}>
-            <Bell size={22} color="#2D1B16" strokeWidth={2} />
-            <View style={styles.notificationDot} />
-          </View>
-        </View>
-        <Text style={styles.subtitle}>Beautiful furniture for your home</Text>
-      </View>
-    </Animated.View>
-
-    {/* Search Bar */}
-    <Animated.View style={[
-      styles.searchWrapper,
-      { opacity: originalSearchBarOpacity }
-    ]}>
-      <TouchableOpacity 
-        onPress={() => router.push('/search')}
-        activeOpacity={0.8}
-      >
-        <View style={styles.searchContainer}>
-          <Search size={18} color="#8B7355" strokeWidth={2} />
-          <Text style={styles.searchPlaceholder}>Search furniture, decor, and more</Text>
-        </View>
-      </TouchableOpacity>
-    </Animated.View>
-  </View>
-);
-
-
-const renderCategories = () => {
-  // Split categories into two rows
-  const firstRow = categories.slice(0, 4);
-  const secondRow = categories.slice(4, 8);
-
-  return (
-    <View style={styles.categoriesContainer}>
-      <View style={styles.sectionHeader}>
-        {/* <Text style={styles.sectionTitle}>Shop by Category</Text> */}
-        {/* <TouchableOpacity>
-          <Text style={styles.seeAllText}>See All</Text>
-        </TouchableOpacity> */}
-      </View>
-      <View style={styles.categoriesGrid}>
-        {/* First Row */}
-        <View style={styles.categoryRow}>
-          {firstRow.map((category) => (
-            <TouchableOpacity 
-              key={category.id} 
-              style={styles.categoryCard}
-              onPress={() => router.push(`/categories?filter=${category.id}`)}
-            >
-              <View style={styles.categoryIconContainer}>
-                <Text style={styles.categoryIcon}>{category.icon}</Text>
-              </View>
-              <Text style={styles.categoryName}>{category.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        {/* Second Row */}
-        <View style={styles.categoryRow}>
-          {secondRow.map((category) => (
-            <TouchableOpacity 
-              key={category.id} 
-              style={styles.categoryCard}
-              onPress={() => router.push(`/categories?filter=${category.id}`)}
-            >
-              <View style={styles.categoryIconContainer}>
-                <Text style={styles.categoryIcon}>{category.icon}</Text>
-              </View>
-              <Text style={styles.categoryName}>{category.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-    </View>
-  );
-};
-
+// Define category type
+interface Category {
+  id: string;
+  name: string;
+  icon?: string;
+  slug: string;
+  icon_url?: string;
+}
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const { addToCart } = useCart();
   const scrollY = useRef(new Animated.Value(0)).current;
   
+  // State for categories
+  const [categories, setCategories] = useState<Category[]>([]);
   // State for featured products
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -192,45 +111,200 @@ export default function HomeScreen() {
   
   const searchBarScale = scrollY.interpolate({
     inputRange: [0, HEADER_HEIGHT * 0.3, HEADER_HEIGHT * 0.7, HEADER_HEIGHT],
-    outputRange: [0.95, 0.97, 0.99, 1],
+    outputRange: [0.8, 0.9, 0.95, 1],
     extrapolate: 'clamp',
   });
-  
+
   const originalSearchBarOpacity = scrollY.interpolate({
-    inputRange: [0, HEADER_HEIGHT * 0.2, HEADER_HEIGHT * 0.4],
+    inputRange: [0, HEADER_HEIGHT * 0.5, HEADER_HEIGHT],
     outputRange: [1, 0.5, 0],
     extrapolate: 'clamp',
   });
-  
-  // Animation for header content opacity - hide when scrolled
+
   const headerContentOpacity = scrollY.interpolate({
-    inputRange: [0, HEADER_HEIGHT * 0.2, HEADER_HEIGHT * 0.4],
-    outputRange: [1, 0.5, 0],
+    inputRange: [0, HEADER_HEIGHT * 0.3, HEADER_HEIGHT * 0.7],
+    outputRange: [1, 0.7, 0.3],
     extrapolate: 'clamp',
   });
 
-  // Animation for categories section
   const categoriesTranslateY = scrollY.interpolate({
-    inputRange: [0, CATEGORIES_HEIGHT],
-    outputRange: [0, -10],
+    inputRange: [0, CATEGORIES_HEIGHT * 0.5, CATEGORIES_HEIGHT],
+    outputRange: [0, -CATEGORIES_HEIGHT * 0.25, -CATEGORIES_HEIGHT * 0.5],
     extrapolate: 'clamp',
   });
 
-  // Animation for categories opacity
   const categoriesOpacity = scrollY.interpolate({
-    inputRange: [0, CATEGORIES_HEIGHT * 0.7, CATEGORIES_HEIGHT],
-    outputRange: [1, 0.7, 0.5],
+    inputRange: [0, CATEGORIES_HEIGHT * 0.3, CATEGORIES_HEIGHT * 0.8],
+    outputRange: [1, 0.7, 0.2],
     extrapolate: 'clamp',
   });
-  
-  // Animation for original search bar opacity is defined above
-  
+
   // Animation for product section shadow
   const productSectionShadow = scrollY.interpolate({
     inputRange: [0, CATEGORIES_HEIGHT * 0.5],
-    outputRange: [0, 12],
+    outputRange: [0, 0.12],
     extrapolate: 'clamp',
   });
+
+  // Fetch categories from the database
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        // Define the type for category data from database
+        type DBCategory = {
+          id: string;
+          name: string;
+          slug: string;
+          icon_url?: string;
+        };
+
+        // Try to fetch categories with icon_url first
+        const response = await supabase
+          .from('categories')
+          .select('id, name, slug, icon_url')
+          .eq('is_active', true)
+          .order('sort_order');
+        
+        // If there's an error or no data, use default categories
+        if (response.error || !response.data || response.data.length === 0) {
+          console.log('Error or no categories found, using defaults');
+          if (response.error) console.error(response.error);
+          useDefaultCategories();
+          return;
+        }
+        
+        // Safely cast the data to the expected type
+        // First assert to unknown, then to our expected type to avoid TypeScript errors
+        const data = (response.data as unknown) as DBCategory[];
+        
+        // Map database categories to the format expected by the UI
+        const mappedCategories: Category[] = data.map(cat => ({
+          id: cat.slug, // Use slug as ID for routing
+          name: cat.name,
+          icon_url: cat.icon_url,
+          slug: cat.slug
+        }));
+        
+        setCategories(mappedCategories);
+      } catch (err) {
+        console.error('Error in fetchCategories:', err);
+        // Fallback to default categories
+        useDefaultCategories();
+      }
+    };
+    
+    // Helper function for default categories
+    const useDefaultCategories = () => {
+      const defaultCategories: Category[] = [
+        { id: 'all', name: 'All', slug: 'all', icon: '🏠' },
+        { id: 'chairs', name: 'Chairs', slug: 'chairs', icon: '🪑' },
+        { id: 'tables', name: 'Tables', slug: 'tables', icon: '🪵' },
+        { id: 'sofas', name: 'Sofas', slug: 'sofas', icon: '🛋️' },
+        { id: 'beds', name: 'Beds', slug: 'beds', icon: '🛏️' },
+        { id: 'lamps', name: 'Lamps', slug: 'lamps', icon: '💡' },
+        { id: 'decor', name: 'Decor', slug: 'decor', icon: '🖼️' },
+        { id: 'storage', name: 'Storage', slug: 'storage', icon: '📦' },
+      ];
+      setCategories(defaultCategories);
+    };
+    
+    fetchCategories();
+  }, []);
+
+  const renderCategories = () => {
+  // Ensure we have categories before rendering
+  if (!categories || categories.length === 0) {
+    return null;
+  }
+  
+  // Safely slice the array to prevent errors
+  const firstRow = categories.slice(0, Math.min(4, categories.length));
+  const secondRow = categories.slice(4, Math.min(8, categories.length));
+  
+  // Helper function to render a single category
+  const renderCategory = (category: Category) => (
+    <TouchableOpacity 
+      key={category.id} 
+      style={styles.categoryCard}
+      onPress={() => router.push(`/categories?filter=${category.id}`)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.categoryIconContainer}>
+        {category.icon_url ? (
+          <Image 
+            source={{ uri: category.icon_url }} 
+            style={styles.categoryIconImage} 
+            resizeMode="contain"
+          />
+        ) : (
+          <Text style={styles.categoryIcon}>{category.icon || '📦'}</Text>
+        )}
+      </View>
+      <Text style={styles.categoryName}>{category.name}</Text>
+    </TouchableOpacity>
+  );
+  
+  return (
+    <View style={styles.categoriesContainer}>
+      <View style={styles.categoryRow}>
+        {firstRow.map(renderCategory)}
+      </View>
+      {secondRow.length > 0 && (
+        <View style={styles.categoryRow}>
+          {secondRow.map(renderCategory)}
+        </View>
+      )}
+    </View>
+  );
+};
+
+const getGreeting = () => {
+  const currentHour = new Date().getHours();
+  
+  if (currentHour >= 5 && currentHour < 12) {
+    return 'Good Morning';
+  } else if (currentHour >= 12 && currentHour < 17) {
+    return 'Good Afternoon';
+  } else if (currentHour >= 17 && currentHour < 21) {
+    return 'Good Evening';
+  } else {
+    return 'Good Night';
+  }
+};
+
+const renderHeader = (originalSearchBarOpacity: Animated.AnimatedInterpolation<number>, headerContentOpacity: Animated.AnimatedInterpolation<number>) => (
+  <View style={styles.headerContainer}>
+    <Animated.View style={[styles.header, { opacity: headerContentOpacity }]}>
+      <View>
+        <Text style={styles.greeting}>{getGreeting()}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>AceQuint</Text>
+          <View style={styles.notificationButton}>
+            <Bell size={22} color="#2D1B16" strokeWidth={2} />
+            <View style={styles.notificationDot} />
+          </View>
+        </View>
+        <Text style={styles.subtitle}>Shop for the things you need</Text>
+      </View>
+    </Animated.View>
+
+    {/* Search Bar */}
+    <Animated.View style={[
+      styles.searchWrapper,
+      { opacity: originalSearchBarOpacity }
+    ]}>
+      <TouchableOpacity 
+        onPress={() => router.push('/search')}
+        activeOpacity={0.8}
+      >
+        <View style={styles.searchContainer}>
+          <Search size={18} color="#8B7355" strokeWidth={2} />
+          <Text style={styles.searchPlaceholder}>Search...</Text>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  </View>
+);
 
   const fetchFeaturedProducts = useCallback(async () => {
     let isMounted = true;
@@ -315,7 +389,7 @@ export default function HomeScreen() {
     return (
       <LinearGradient colors={['#F5E6D3', '#E8D5C4']} style={styles.container}>
         <View style={styles.authPrompt}>
-          <Text style={styles.authTitle}>Welcome to Casa</Text>
+          <Text style={styles.authTitle}>Welcome to AceQuint</Text>
           <Text style={styles.authSubtitle}>Sign in to explore our collection</Text>
           <TouchableOpacity
             style={styles.authButton}
@@ -349,7 +423,7 @@ export default function HomeScreen() {
         >
           <View style={styles.searchContainer}>
             <Search size={18} color="#8B7355" strokeWidth={2} />
-            <Text style={styles.searchPlaceholder}>Search furniture, decor, and more</Text>
+            <Text style={styles.searchPlaceholder}>Search...</Text>
           </View>
         </TouchableOpacity>
       </Animated.View>
@@ -653,6 +727,12 @@ const styles = StyleSheet.create({
   },
   categoryIcon: {
     fontSize: 24,
+    marginBottom: 4,
+  },
+  categoryIconImage: {
+    width: 36,
+    height: 36,
+    marginBottom: 4,
   },
   categoryName: {
     fontSize: 12,
@@ -789,8 +869,10 @@ const styles = StyleSheet.create({
   authTitle: {
     fontSize: 32,
     fontWeight: 'bold',
+    fontFamily: 'Inter-Bold',
     color: '#2D1B16',
     marginBottom: 8,
+    textAlign: 'center',
   },
   authSubtitle: {
     fontSize: 16,

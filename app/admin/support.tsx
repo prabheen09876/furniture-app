@@ -174,10 +174,10 @@ export default function SupportAdminScreen() {
       // Send email to the user
       const emailResult = await sendEmail(
         selectedMessage.email,
-        'Response to Your Support Request - Casa Furniture',
+        'Response to Your Support Request - AceQuint Furniture',
         `Dear Customer,
 
-Thank you for contacting Casa Furniture Support.
+Thank you for contacting AceQuint Furniture Support.
 
 Your Message:
 "${selectedMessage.message}"
@@ -188,7 +188,7 @@ Our Response:
 If you have any further questions, please don't hesitate to contact us.
 
 Best regards,
-Casa Furniture Support Team`
+AceQuint Furniture Support Team`
       );
       
       if (emailResult.success) {

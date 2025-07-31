@@ -53,6 +53,7 @@ export interface Database {
           slug: string
           description: string | null
           image_url: string | null
+          icon_url: string | null
           sort_order: number
           is_active: boolean
           created_at: string
@@ -64,6 +65,7 @@ export interface Database {
           slug: string
           description?: string | null
           image_url?: string | null
+          icon_url?: string | null
           sort_order?: number
           is_active?: boolean
           created_at?: string
@@ -75,6 +77,7 @@ export interface Database {
           slug?: string
           description?: string | null
           image_url?: string | null
+          icon_url?: string | null
           sort_order?: number
           is_active?: boolean
           created_at?: string
@@ -128,7 +131,8 @@ export interface Database {
           order_id: string
           product_id: string
           quantity: number
-          price: number
+          unit_price: number
+          total_price: number
           created_at: string
           updated_at: string
         }
@@ -137,7 +141,8 @@ export interface Database {
           order_id: string
           product_id: string
           quantity: number
-          price: number
+          unit_price: number
+          total_price: number
           created_at?: string
           updated_at?: string
         }
@@ -146,7 +151,8 @@ export interface Database {
           order_id?: string
           product_id?: string
           quantity?: number
-          price?: number
+          unit_price?: number
+          total_price?: number
           created_at?: string
           updated_at?: string
         }
@@ -169,7 +175,9 @@ export interface Database {
         Row: {
           id: string
           user_id: string
+          order_number: string
           status: string
+          subtotal: number
           total_amount: number
           shipping_address: string | null
           tracking_number: string | null
@@ -180,7 +188,9 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
+          order_number: string
           status: string
+          subtotal: number
           total_amount: number
           shipping_address?: string | null
           tracking_number?: string | null
@@ -191,7 +201,9 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
+          order_number?: string
           status?: string
+          subtotal?: number
           total_amount?: number
           shipping_address?: string | null
           tracking_number?: string | null
@@ -299,34 +311,25 @@ export interface Database {
       profiles: {
         Row: {
           id: string
-          email: string
-          first_name: string | null
-          last_name: string | null
+          email: string | null
+          full_name: string | null
           avatar_url: string | null
-          address: string | null
-          phone: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id: string
-          email: string
-          first_name?: string | null
-          last_name?: string | null
+          email?: string | null
+          full_name?: string | null
           avatar_url?: string | null
-          address?: string | null
-          phone?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
-          email?: string
-          first_name?: string | null
-          last_name?: string | null
+          email?: string | null
+          full_name?: string | null
           avatar_url?: string | null
-          address?: string | null
-          phone?: string | null
           created_at?: string
           updated_at?: string
         }

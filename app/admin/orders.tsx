@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -16,7 +17,7 @@ import { supabase } from '@/lib/supabase';
 import { Database } from '@/types/database';
 
 type Order = Database['public']['Tables']['orders']['Row'] & {
-  users: {
+  profiles: {
     full_name: string | null;
     email: string;
   } | null;
@@ -30,7 +31,9 @@ type Order = Database['public']['Tables']['orders']['Row'] & {
       image_url: string;
     } | null;
   }>;
-  order_number: string; // Adding this property as it's used in the component
+  order_number: string;
+  tracking_number?: string | null;
+  estimated_delivery?: string | null;
 };
 
 const statusColors = {
@@ -65,14 +68,12 @@ export default function AdminOrders() {
 
   const fetchOrders = async () => {
     try {
-      const { data, error } = await supabase
+      console.log('Fetching orders...');
+      // First, get orders with order items
+      const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select(`
           *,
-          users:user_id (
-            full_name,
-            email
-          ),
           order_items (
             id,
             quantity,
@@ -86,17 +87,31 @@ export default function AdminOrders() {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      
-      // Add order_number property to each order and fix type issues
-      const ordersWithNumber = (data || []).map(order => ({
-        ...order,
-        order_number: `ORD-${order.id.substring(0, 8).toUpperCase()}`
-      }));
-      
-      // Use type assertion to handle the relationship type mismatch
-      setOrders(ordersWithNumber as unknown as Order[]);
-    } catch (error) {
+      if (ordersError) throw ordersError;
+
+      console.log('Orders data:', ordersData);
+      console.log('Orders count:', ordersData?.length || 0);
+
+      // Then get profiles for each order
+      const ordersWithProfiles = await Promise.all(
+        (ordersData || []).map(async (order) => {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('full_name, email')
+            .eq('id', order.user_id)
+            .single();
+
+          return {
+            ...order,
+            order_number: `ORD-${order.id.substring(0, 8).toUpperCase()}`,
+            profiles: profileData
+          };
+        })
+      );
+
+      console.log('Final orders with profiles:', ordersWithProfiles);
+      setOrders(ordersWithProfiles as unknown as Order[]);
+    } catch (error: any) {
       console.error('Error fetching orders:', error);
       Alert.alert('Error', 'Failed to fetch orders');
     } finally {
@@ -106,21 +121,39 @@ export default function AdminOrders() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
+      let updateData: any = { 
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      };
+      
+      // Generate tracking number when order is shipped
+      if (newStatus === 'shipped') {
+        const trackingNumber = `TRK${Date.now().toString().slice(-8)}`;
+        updateData.tracking_number = trackingNumber;
+        
+        // Set estimated delivery (7 days from now)
+        const estimatedDelivery = new Date();
+        estimatedDelivery.setDate(estimatedDelivery.getDate() + 7);
+        updateData.estimated_delivery = estimatedDelivery.toISOString();
+      }
+
       const { error } = await supabase
         .from('orders')
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', orderId);
 
       if (error) throw error;
       
       setOrders(orders.map(order => 
-        order.id === orderId ? { ...order, status: newStatus } : order
+        order.id === orderId ? { ...order, ...updateData } : order
       ));
       
-      Alert.alert('Success', 'Order status updated successfully');
+      Alert.alert(
+        'Success', 
+        newStatus === 'shipped' 
+          ? `Order marked as shipped. Tracking number: ${updateData.tracking_number}`
+          : 'Order status updated successfully'
+      );
     } catch (error) {
       console.error('Error updating order status:', error);
       Alert.alert('Error', 'Failed to update order status');
@@ -130,8 +163,8 @@ export default function AdminOrders() {
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
       order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.users?.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.users?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
+      order.profiles?.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.profiles?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = selectedStatus === 'all' || order.status === selectedStatus;
     
@@ -153,7 +186,8 @@ export default function AdminOrders() {
   ];
 
   return (
-    <LinearGradient colors={['#F5E6D3', '#E8D5C4']} style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <LinearGradient colors={['#F5E6D3', '#E8D5C4']} style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -207,7 +241,22 @@ export default function AdminOrders() {
       {/* Orders List */}
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
         <View style={styles.ordersContainer}>
-          {filteredOrders.map((order) => {
+          {loading ? (
+            <View style={styles.emptyState}>
+              <Package size={48} color="#8B7355" strokeWidth={1.5} />
+              <Text style={styles.emptyStateTitle}>Loading Orders...</Text>
+              <Text style={styles.emptyStateText}>Please wait while we fetch your orders.</Text>
+            </View>
+          ) : filteredOrders.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Package size={48} color="#8B7355" strokeWidth={1.5} />
+              <Text style={styles.emptyStateTitle}>No Orders Found</Text>
+              <Text style={styles.emptyStateText}>
+                {orders.length === 0 ? 'No orders have been placed yet.' : 'No orders match your current filter.'}
+              </Text>
+            </View>
+          ) : (
+            filteredOrders.map((order) => {
             const StatusIcon = statusIcons[order.status as keyof typeof statusIcons];
             const statusColor = statusColors[order.status as keyof typeof statusColors];
             
@@ -217,7 +266,7 @@ export default function AdminOrders() {
                   <View style={styles.orderInfo}>
                     <Text style={styles.orderNumber}>{order.order_number}</Text>
                     <Text style={styles.customerName}>
-                      {order.users?.full_name || order.users?.email}
+                      {order.profiles?.full_name || order.profiles?.email}
                     </Text>
                     <Text style={styles.orderDate}>
                       {new Date(order.created_at).toLocaleDateString()}
@@ -231,7 +280,7 @@ export default function AdminOrders() {
                         {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                       </Text>
                     </View>
-                    <Text style={styles.orderTotal}>${order.total_amount}</Text>
+                    <Text style={styles.orderTotal}>₹{order.total_amount}</Text>
                   </View>
                 </View>
 
@@ -248,6 +297,36 @@ export default function AdminOrders() {
                     <Text style={styles.moreItems}>
                       +{order.order_items.length - 2} more items
                     </Text>
+                  )}
+                </View>
+
+                {/* Payment & Delivery Info */}
+                <View style={styles.orderDetails}>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Payment:</Text>
+                    <Text style={styles.detailValue}>Pay on Delivery</Text>
+                  </View>
+                  {order.shipping_address && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Address:</Text>
+                      <Text style={styles.detailValue} numberOfLines={2}>
+                        {order.shipping_address}
+                      </Text>
+                    </View>
+                  )}
+                  {order.tracking_number && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Tracking:</Text>
+                      <Text style={styles.detailValue}>{order.tracking_number}</Text>
+                    </View>
+                  )}
+                  {order.estimated_delivery && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Est. Delivery:</Text>
+                      <Text style={styles.detailValue}>
+                        {new Date(order.estimated_delivery).toLocaleDateString()}
+                      </Text>
+                    </View>
                   )}
                 </View>
 
@@ -298,15 +377,20 @@ export default function AdminOrders() {
                 </View>
               </BlurView>
             );
-          })}
+            })
+          )}
         </View>
         <View style={{ height: 100 }} />
       </ScrollView>
-    </LinearGradient>
+      </LinearGradient>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
@@ -315,7 +399,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 20,
     paddingBottom: 20,
   },
   backButton: {
@@ -356,7 +440,7 @@ const styles = StyleSheet.create({
   },
   filtersContainer: {
     paddingLeft: 20,
-    marginBottom: 20,
+    marginBottom: -650,
   },
   filterButton: {
     marginRight: 12,
@@ -456,6 +540,31 @@ const styles = StyleSheet.create({
     color: '#8B7355',
     fontStyle: 'italic',
   },
+  orderDetails: {
+    marginBottom: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(139, 115, 85, 0.2)',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  detailLabel: {
+    fontSize: 12,
+    color: '#8B7355',
+    fontWeight: '500',
+    flex: 1,
+  },
+  detailValue: {
+    fontSize: 12,
+    color: '#2D1B16',
+    fontWeight: '600',
+    flex: 2,
+    textAlign: 'right',
+  },
   orderActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -485,5 +594,25 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2D1B16',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#8B7355',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

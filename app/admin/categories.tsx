@@ -79,18 +79,58 @@ export default function AdminCategories() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const { error } = await supabase
+              console.log('Attempting to delete category with ID:', categoryId);
+              
+              // First check if category exists
+              const { data: existingCategory, error: checkError } = await supabase
+                .from('categories')
+                .select('id, name')
+                .eq('id', categoryId)
+                .single();
+              
+              if (checkError) {
+                console.error('Error checking category:', checkError);
+                throw new Error('Category not found or access denied');
+              }
+              
+              console.log('Found category to delete:', existingCategory);
+              
+              // Check if category has products
+              const { count: productCount, error: countError } = await supabase
+                .from('products')
+                .select('id', { count: 'exact' })
+                .eq('category', existingCategory.name.toLowerCase());
+              
+              if (countError) {
+                console.error('Error counting products:', countError);
+              }
+              
+              if (productCount && productCount > 0) {
+                Alert.alert(
+                  'Cannot Delete Category',
+                  `This category has ${productCount} products. Please move or delete the products first.`
+                );
+                return;
+              }
+              
+              // Proceed with deletion
+              const { error: deleteError } = await supabase
                 .from('categories')
                 .delete()
                 .eq('id', categoryId);
 
-              if (error) throw error;
+              if (deleteError) {
+                console.error('Delete error details:', deleteError);
+                throw deleteError;
+              }
               
+              console.log('Category deleted successfully');
               setCategories(categories.filter(c => c.id !== categoryId));
               Alert.alert('Success', 'Category deleted successfully');
-            } catch (error) {
+            } catch (error: any) {
               console.error('Error deleting category:', error);
-              Alert.alert('Error', 'Failed to delete category');
+              const errorMessage = error?.message || 'Failed to delete category. Please check your permissions.';
+              Alert.alert('Error', errorMessage);
             }
           }
         }
@@ -302,7 +342,7 @@ function CategoryModal({
       setName(category.name);
       setSlug(category.slug);
       setDescription(category.description || '');
-      setImageUrl(category.image_url || '');
+      setImageUrl(category.icon_url || '');
       setSortOrder(category.sort_order.toString());
       setIsActive(category.is_active);
     } else {
@@ -342,7 +382,26 @@ function CategoryModal({
         // Create a unique filename
         const timestamp = Date.now();
         const randomId = Math.random().toString(36).substring(7);
-        const fileExt = image.uri.split('.').pop() || 'jpg';
+        
+        // Get file extension from mimeType or URI
+        let fileExt = 'jpg'; // default
+        if (image.mimeType) {
+          const mimeMap: { [key: string]: string } = {
+            'image/jpeg': 'jpg',
+            'image/jpg': 'jpg',
+            'image/png': 'png',
+            'image/webp': 'webp',
+            'image/gif': 'gif'
+          };
+          fileExt = mimeMap[image.mimeType] || 'jpg';
+        } else if (image.uri && !image.uri.startsWith('data:')) {
+          // Only try to get extension from URI if it's not a data URI
+          const uriExt = image.uri.split('.').pop()?.toLowerCase();
+          if (uriExt && ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(uriExt)) {
+            fileExt = uriExt === 'jpeg' ? 'jpg' : uriExt;
+          }
+        }
+        
         const filename = `${timestamp}-${randomId}.${fileExt}`;
         const filePath = `category-images/${filename}`;
 
@@ -352,14 +411,14 @@ function CategoryModal({
 
         // Upload to Supabase Storage
         const { data, error } = await supabase.storage
-          .from('products')
+          .from('category-icons')
           .upload(filePath, blob);
 
         if (error) throw error;
 
         // Get public URL
         const { data: { publicUrl } } = supabase.storage
-          .from('products')
+          .from('category-icons')
           .getPublicUrl(filePath);
 
         setImageUrl(publicUrl);
@@ -376,10 +435,10 @@ function CategoryModal({
     if (imageUrl) {
       try {
         // Extract file path from URL
-        const urlParts = imageUrl.split('supabase.co/storage/v1/object/public/products/');
+        const urlParts = imageUrl.split('supabase.co/storage/v1/object/public/category-icons/');
         if (urlParts.length > 1) {
           const filePath = urlParts[1];
-          await supabase.storage.from('products').remove([filePath]);
+          await supabase.storage.from('category-icons').remove([filePath]);
         }
       } catch (error) {
         console.warn('Error removing image from storage:', error);
@@ -405,7 +464,7 @@ function CategoryModal({
         name: name.trim(),
         slug: slug.trim(),
         description: description.trim() || null,
-        image_url: imageUrl || null,
+        icon_url: imageUrl || null,
         sort_order: parseInt(sortOrder) || 0,
         is_active: isActive,
       };

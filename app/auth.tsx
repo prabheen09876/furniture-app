@@ -122,8 +122,8 @@ export default function AuthScreen() {
             </Text>
             <Text style={styles.subtitle}>
               {isSignUp 
-                ? 'Sign up to start shopping for beautiful furniture' 
-                : 'Sign in to your Casa account'
+                ? 'Sign up to start shopping' 
+                : 'Sign in to your AceQuint account'
               }
             </Text>
 

@@ -214,7 +214,10 @@ export default function CartScreen() {
                   <Text style={styles.totalLabel}>Total:</Text>
                   <Text style={styles.totalPrice}>{formatPrice(getTotalPrice())}</Text>
                 </View>
-                <TouchableOpacity style={styles.checkoutButton}>
+                <TouchableOpacity 
+                  style={styles.checkoutButton}
+                  onPress={() => router.push('/checkout')}
+                >
                   <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
                 </TouchableOpacity>
               </View>

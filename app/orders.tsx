@@ -36,6 +36,7 @@ interface OrderItem {
 interface Order {
   id: string;
   user_id: string;
+  order_number: string;
   created_at: string;
   status: OrderStatus;
   total_amount: number;
@@ -81,96 +82,50 @@ export default function OrdersScreen() {
         setError(null);
 
         // Fetch orders from Supabase
-        const { data, error } = await supabase
+        const { data: ordersData, error: ordersError } = await supabase
           .from('orders')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
-        if (error) {
-          throw error;
+        if (ordersError) {
+          throw ordersError;
         }
 
-        if (!data || data.length === 0) {
-          // Create mock orders for demo purposes
-          const mockOrders: Order[] = [
-            {
-              id: '1',
-              user_id: user.id,
-              created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-              status: 'delivered',
-              total_amount: 249.99,
-              shipping_address: '123 Main St, Anytown, USA',
-              tracking_number: 'TRK123456789',
-              estimated_delivery: '2023-07-20',
-              items: []
-            },
-            {
-              id: '2',
-              user_id: user.id,
-              created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-              status: 'shipped',
-              total_amount: 129.95,
-              shipping_address: '123 Main St, Anytown, USA',
-              tracking_number: 'TRK987654321',
-              estimated_delivery: '2023-07-29',
-              items: []
-            },
-            {
-              id: '3',
-              user_id: user.id,
-              created_at: new Date().toISOString(),
-              status: 'processing',
-              total_amount: 349.50,
-              shipping_address: '123 Main St, Anytown, USA',
-              items: []
-            }
-          ];
-          setOrders(mockOrders);
+        if (!ordersData || ordersData.length === 0) {
+          setOrders([]);
           return;
         }
 
-        // Fetch order items for each order
+        // Fetch order items for each order with product details
         const ordersWithItems = await Promise.all(
-          data.map(async (order) => {
-            // Mock order items data since we don't have the actual table yet
-            // In a real app, this would fetch from the order_items table
-            const mockItems = [
-              {
-                id: `item-${Math.random().toString(36).substring(2, 9)}`,
-                product_id: `prod-${Math.random().toString(36).substring(2, 9)}`,
-                quantity: Math.floor(Math.random() * 3) + 1,
-                price: Math.floor(Math.random() * 100) + 50,
-                products: {
-                  name: 'Modern Sofa',
-                  image_url: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?ixlib=rb-4.0.3'
-                }
-              },
-              {
-                id: `item-${Math.random().toString(36).substring(2, 9)}`,
-                product_id: `prod-${Math.random().toString(36).substring(2, 9)}`,
-                quantity: Math.floor(Math.random() * 2) + 1,
-                price: Math.floor(Math.random() * 80) + 30,
-                products: {
-                  name: 'Wooden Coffee Table',
-                  image_url: 'https://images.unsplash.com/photo-1532372320572-cda25653a694?ixlib=rb-4.0.3'
-                }
-              }
-            ];
-            
-            const items = mockItems;
-            const itemsError = null;
+          ordersData.map(async (order) => {
+            // Fetch order items with product details
+            const { data: itemsData, error: itemsError } = await supabase
+              .from('order_items')
+              .select(`
+                id,
+                product_id,
+                quantity,
+                price,
+                products (
+                  name,
+                  image_url
+                )
+              `)
+              .eq('order_id', order.id);
 
             if (itemsError) {
               console.error('Error fetching order items:', itemsError);
               return {
                 ...order,
                 items: [],
+                status: order.status as OrderStatus
               } as Order;
             }
 
             // Format items with product details
-            const formattedItems = items.map((item: any) => ({
+            const formattedItems = (itemsData || []).map((item: any) => ({
               id: item.id,
               product_id: item.product_id,
               quantity: item.quantity,
@@ -244,7 +199,7 @@ export default function OrdersScreen() {
       <BlurView intensity={40} style={styles.orderCardInner}>
         <View style={styles.orderHeader}>
           <View>
-            <Text style={styles.orderNumber}>Order #{order.id.slice(-6)}</Text>
+            <Text style={styles.orderNumber}>{order.order_number || `Order #${order.id.slice(-6)}`}</Text>
             <View style={styles.dateContainer}>
               <Calendar size={14} color="#8B7355" strokeWidth={1.5} />
               <Text style={styles.orderDate}>{formatDate(order.created_at)}</Text>
@@ -273,7 +228,7 @@ export default function OrdersScreen() {
           <Text style={styles.itemsCount}>
             {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
           </Text>
-          <Text style={styles.orderTotal}>${order.total_amount.toFixed(2)}</Text>
+          <Text style={styles.orderTotal}>₹{order.total_amount.toFixed(2)}</Text>
         </View>
 
         {order.status === 'shipped' && order.tracking_number && (

@@ -59,7 +59,7 @@ export default function SettingsScreen() {
               const { error } = await supabase.auth.resetPasswordForEmail(
                 user.email,
                 {
-                  redirectTo: 'casa://reset-password',
+                  redirectTo: 'AceQuint://reset-password',
                 }
               );
               
@@ -334,7 +334,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
         
         <View style={styles.versionContainer}>
-          <Text style={styles.versionText}>Casa Furniture v1.0.0</Text>
+          <Text style={styles.versionText}>AceQuint Furniture v1.0.0</Text>
         </View>
       </ScrollView>
     </LinearGradient>
