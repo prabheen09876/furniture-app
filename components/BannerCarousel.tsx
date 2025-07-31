@@ -239,7 +239,7 @@ export default function BannerCarousel({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 20,
+    marginVertical: 0, // Removed extra margin to fix spacing
   },
   loadingContainer: {
     paddingHorizontal: 20,
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 8, // Reduced margin to minimize spacing
     gap: 8,
   },
   paginationDot: {
@@ -337,7 +337,6 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: 'rgba(139, 115, 85, 0.3)',
-    transition: 'all 0.3s ease',
   },
   paginationDotActive: {
     backgroundColor: '#8B7355',

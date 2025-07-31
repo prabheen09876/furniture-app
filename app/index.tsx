@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabase';
 import { ProductGrid } from './ProductGrid';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
+import BannerCarousel from '@/components/BannerCarousel';
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('en-IN', {
@@ -49,10 +50,13 @@ const { width: screenWidth } = Dimensions.get('window');
 
 // Layout constants
 const HEADER_HEIGHT = Platform.OS === 'ios' ? 80 : 80;
+const HEADER_PADDING_TOP = Platform.OS === 'ios' ? 45 : 25;
+const HEADER_PADDING_BOTTOM = 15;
+const ACTUAL_HEADER_HEIGHT = HEADER_HEIGHT + HEADER_PADDING_TOP + HEADER_PADDING_BOTTOM;
 const CATEGORIES_HEIGHT = 160;
 const TAB_BAR_HEIGHT = 60;
 const SCREEN_PADDING = 16;
-const TOP_SECTION_HEIGHT = HEADER_HEIGHT + CATEGORIES_HEIGHT;
+const TOP_SECTION_HEIGHT = ACTUAL_HEADER_HEIGHT + CATEGORIES_HEIGHT;
 
 // Define category type
 interface Category {
@@ -451,20 +455,12 @@ const renderHeader = (originalSearchBarOpacity: Animated.AnimatedInterpolation<n
         />
       </Animated.View>
       
-      {/* Categories Section */}
-      <Animated.View 
-        style={[
-          styles.categoriesContainer,
-          { 
-            transform: [{ translateY: categoriesTranslateY }],
-            opacity: categoriesOpacity,
-          }
-        ]}
-      >
-        {renderCategories()}
-      </Animated.View>
+      {/* Banner Carousel Section */}
+      <View style={styles.bannerSection}>
+        <BannerCarousel autoPlay={true} autoPlayInterval={4000} />
+      </View>
       
-      {/* Categories Section is now only rendered once above */}
+      {/* Banner Carousel Section is now rendered above */}
       
       {/* Scrollable Product Section */}
       {/* Products Section (On Top) */}
@@ -691,15 +687,26 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    top: HEADER_HEIGHT,
+    top: ACTUAL_HEADER_HEIGHT,
     zIndex: 15,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     paddingBottom: 20,
     paddingHorizontal: SCREEN_PADDING,
-    paddingTop: 35,
+    paddingTop: 20, // Reduced padding to eliminate extra space
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
    
+  },
+  bannerSection: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: ACTUAL_HEADER_HEIGHT + 80, // Add extra margin to ensure it's below header
+    zIndex: 15,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    paddingBottom: 10,
   },
   categoriesScrollContainer: {
     paddingRight: SCREEN_PADDING,
@@ -891,4 +898,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+ 
+
 });

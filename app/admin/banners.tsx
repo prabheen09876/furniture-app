@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   Image,
   Modal,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -76,7 +77,35 @@ export default function BannerManagement() {
     }
   };
 
+  // Store the selected file for web platform
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   const pickImage = async () => {
+    // For web platform, use native file input to avoid blob URL issues
+    if (Platform.OS === 'web') {
+      // Create file input element
+      const input = (global as any).document?.createElement('input');
+      if (!input) {
+        Alert.alert('Error', 'File selection not supported in this environment');
+        return;
+      }
+      
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (event: any) => {
+        const file = event.target.files[0];
+        if (file) {
+          // Create object URL for preview
+          const objectUrl = URL.createObjectURL(file);
+          setSelectedImage(objectUrl);
+          setSelectedFile(file);
+        }
+      };
+      input.click();
+      return;
+    }
+
+    // For mobile platforms, use ImagePicker
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission needed', 'Please grant camera roll permissions to upload images.');
@@ -92,30 +121,78 @@ export default function BannerManagement() {
 
     if (!result.canceled && result.assets[0]) {
       setSelectedImage(result.assets[0].uri);
+      setSelectedFile(null); // Clear file for mobile
     }
   };
 
   const uploadImage = async (imageUri: string): Promise<string> => {
+    console.log('Starting image upload...', imageUri);
+    
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(7);
-    const fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
-    const fileName = `banner-${timestamp}-${randomId}.${fileExt}`;
+    const fileName = `banner-${timestamp}-${randomId}.jpg`;
     const filePath = `banner-images/${fileName}`;
 
-    const response = await fetch(imageUri);
-    const blob = await response.blob();
+    console.log('Upload path:', filePath);
 
-    const { data, error } = await supabase.storage
-      .from('banners')
-      .upload(filePath, blob);
+    try {
+      let fileToUpload: Blob | File;
+      
+      // For web platform, use the File object directly
+      if (Platform.OS === 'web' && selectedFile) {
+        console.log('Using selected file for web upload:', selectedFile.name, selectedFile.size, 'bytes');
+        fileToUpload = selectedFile;
+      } else {
+        // For mobile platforms or fallback, convert URI to blob
+        console.log('Converting URI to blob for mobile upload');
+        const response = await fetch(imageUri);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+        }
+        fileToUpload = await response.blob();
+      }
+      
+      console.log('File prepared for upload. Size:', fileToUpload.size, 'bytes, Type:', fileToUpload.type);
+      
+      // Validate file
+      if (fileToUpload.size === 0) {
+        throw new Error('Selected image is empty or corrupted');
+      }
+      
+      if (fileToUpload.size > 52428800) { // 50MB limit
+        throw new Error('Image is too large. Please select an image smaller than 50MB.');
+      }
 
-    if (error) throw error;
+      const { data, error } = await supabase.storage
+        .from('banners')
+        .upload(filePath, fileToUpload, {
+          contentType: fileToUpload.type || 'image/jpeg',
+          upsert: false
+        });
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('banners')
-      .getPublicUrl(filePath);
+      if (error) {
+        console.error('Storage upload error:', error);
+        if (error.message.includes('Bucket not found')) {
+          throw new Error('Storage bucket not found. Please run the database setup script first.');
+        }
+        if (error.message.includes('not allowed')) {
+          throw new Error('Upload not allowed. Please check storage permissions.');
+        }
+        throw new Error(`Storage upload failed: ${error.message}`);
+      }
 
-    return publicUrl;
+      console.log('Upload successful:', data);
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('banners')
+        .getPublicUrl(filePath);
+
+      console.log('Public URL generated:', publicUrl);
+      return publicUrl;
+    } catch (error: any) {
+      console.error('Upload image error:', error);
+      throw error;
+    }
   };
 
   const saveBanner = async () => {
@@ -130,11 +207,15 @@ export default function BannerManagement() {
     }
 
     setUploading(true);
+    console.log('Starting banner save process...');
+    
     try {
       let imageUrl = editingBanner?.image_url || '';
       
       if (selectedImage) {
+        console.log('Uploading new image...');
         imageUrl = await uploadImage(selectedImage);
+        console.log('Image uploaded successfully:', imageUrl);
       }
 
       const bannerData = {
@@ -142,19 +223,31 @@ export default function BannerManagement() {
         image_url: imageUrl,
       };
 
+      console.log('Banner data to save:', bannerData);
+
       if (editingBanner) {
+        console.log('Updating existing banner:', editingBanner.id);
         const { error } = await supabase
           .from('banners')
           .update(bannerData)
           .eq('id', editingBanner.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Update error:', error);
+          throw error;
+        }
+        console.log('Banner updated successfully');
       } else {
+        console.log('Creating new banner...');
         const { error } = await supabase
           .from('banners')
           .insert([bannerData]);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error:', error);
+          throw error;
+        }
+        console.log('Banner created successfully');
       }
 
       Alert.alert('Success', `Banner ${editingBanner ? 'updated' : 'created'} successfully`);
@@ -163,7 +256,27 @@ export default function BannerManagement() {
       fetchBanners();
     } catch (error: any) {
       console.error('Error saving banner:', error);
-      Alert.alert('Error', 'Failed to save banner');
+      
+      // More specific error messages
+      let errorMessage = 'Failed to save banner';
+      
+      if (error.message?.includes('relation "public.banners" does not exist')) {
+        errorMessage = 'Banners table not found. Please run the database setup script first.';
+      } else if (error.message?.includes('permission denied')) {
+        errorMessage = 'Permission denied. Please check your authentication.';
+      } else if (error.message?.includes('Storage upload failed')) {
+        errorMessage = `Image upload failed: ${error.message.replace('Storage upload failed: ', '')}`;
+      } else if (error.message?.includes('Failed to fetch image')) {
+        errorMessage = 'Failed to process the selected image. Please try a different image.';
+      } else if (error.message?.includes('bucket') && error.message?.includes('not found')) {
+        errorMessage = 'Storage bucket not found. Please run the storage setup script first.';
+      } else if (error.message?.includes('RLS')) {
+        errorMessage = 'Database access denied. Please check Row Level Security policies.';
+      } else if (error.message) {
+        errorMessage = `Error: ${error.message}`;
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setUploading(false);
     }
@@ -233,6 +346,7 @@ export default function BannerManagement() {
       display_order: banners.length,
     });
     setSelectedImage(null);
+    setSelectedFile(null);
   };
 
   const openAddModal = () => {
