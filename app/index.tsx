@@ -102,8 +102,8 @@ export default function HomeScreen() {
   
   // Animation for search bar - smoother transitions
   const searchBarTranslateY = scrollY.interpolate({
-    inputRange: [0, HEADER_HEIGHT * 0.4, HEADER_HEIGHT, HEADER_HEIGHT + 50],
-    outputRange: [0, -HEADER_HEIGHT * 0.3, -HEADER_HEIGHT + 70, -HEADER_HEIGHT + 70],
+    inputRange: [0, HEADER_HEIGHT * 0.4, HEADER_HEIGHT, HEADER_HEIGHT + 80],
+    outputRange: [0, -HEADER_HEIGHT * 0.3, -HEADER_HEIGHT + 70, -HEADER_HEIGHT + 90],
     extrapolate: 'clamp',
   });
   
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
     position: 'absolute',
-    top: HEADER_HEIGHT + CATEGORIES_HEIGHT - 10, // Moved down by increasing the top position
+    top: HEADER_HEIGHT + CATEGORIES_HEIGHT + 10, // Moved down by increasing the top position
     left: 0,
     right: 0,
     bottom: TAB_BAR_HEIGHT,
@@ -751,7 +751,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     paddingHorizontal: SCREEN_PADDING,
     paddingBottom: 10,
-    // paddingTop: 1,
+    // paddingTop: 80,
   },
   productsContainer: {
     paddingTop: 10,
