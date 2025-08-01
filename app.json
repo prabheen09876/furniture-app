@@ -4,7 +4,7 @@
     "slug": "acequint-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./app/icon.png",
     "scheme": "acequint",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -22,7 +22,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./app/icon.png",
         "backgroundColor": "#2D1B16"
       },
       "package": "com.acequint.app",
@@ -39,7 +39,7 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./app/icon.png"
     },
     "plugins": [
       "expo-router",
@@ -54,7 +54,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "f2dcb762-9e24-45ad-b010-503c45f44647"
+        "projectId": "b3772d3e-f1fd-4184-9a4d-f212b07469ff"
       }
     },
     "owner": "prabheen09876"

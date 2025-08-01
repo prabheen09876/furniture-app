@@ -6,14 +6,14 @@
         <PersistentDeviceSelectionData>
           <option name="api" value="34" />
           <option name="brand" value="motorola" />
-          <option name="codename" value="lion" />
-          <option name="id" value="lion" />
+          <option name="codename" value="fogos" />
+          <option name="id" value="fogos" />
           <option name="labId" value="google" />
           <option name="manufacturer" value="Motorola" />
-          <option name="name" value="moto g04" />
+          <option name="name" value="moto g34 5G" />
           <option name="screenDensity" value="280" />
           <option name="screenX" value="720" />
-          <option name="screenY" value="1612" />
+          <option name="screenY" value="1600" />
           <option name="selected" value="true" />
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
@@ -429,18 +429,6 @@
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
           <option name="api" value="34" />
-          <option name="brand" value="motorola" />
-          <option name="codename" value="fogos" />
-          <option name="id" value="fogos" />
-          <option name="labId" value="google" />
-          <option name="manufacturer" value="Motorola" />
-          <option name="name" value="moto g34 5G" />
-          <option name="screenDensity" value="280" />
-          <option name="screenX" value="720" />
-          <option name="screenY" value="1600" />
-        </PersistentDeviceSelectionData>
-        <PersistentDeviceSelectionData>
-          <option name="api" value="34" />
           <option name="brand" value="samsung" />
           <option name="codename" value="g0q" />
           <option name="id" value="g0q" />
@@ -584,6 +572,18 @@
           <option name="screenDensity" value="360" />
           <option name="screenX" value="1008" />
           <option name="screenY" value="2244" />
+        </PersistentDeviceSelectionData>
+        <PersistentDeviceSelectionData>
+          <option name="api" value="34" />
+          <option name="brand" value="motorola" />
+          <option name="codename" value="lion" />
+          <option name="id" value="lion" />
+          <option name="labId" value="google" />
+          <option name="manufacturer" value="Motorola" />
+          <option name="name" value="moto g04" />
+          <option name="screenDensity" value="280" />
+          <option name="screenX" value="720" />
+          <option name="screenY" value="1612" />
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
           <option name="api" value="33" />

@@ -8,6 +8,7 @@ import { CartProvider } from '../contexts/CartContext';
 import { WishlistProvider } from '../contexts/WishlistContext';
 import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 function LayoutContent() {
   const { theme, isDarkMode } = useTheme();
   
@@ -32,11 +33,13 @@ export default function RootLayout() {
   useFrameworkReady();
   
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <LayoutContent />
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <LayoutContent />
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
