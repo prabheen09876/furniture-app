@@ -28,6 +28,7 @@ import {
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import * as ImagePicker from 'expo-image-picker';
+import { ImageUploadService, ImageUploadOptions } from '@/utils/imageUpload';
 
 interface Banner {
   id: string;
@@ -125,72 +126,19 @@ export default function BannerManagement() {
     }
   };
 
-  const uploadImage = async (imageUri: string): Promise<string> => {
-    console.log('Starting image upload...', imageUri);
-    
-    const timestamp = Date.now();
-    const randomId = Math.random().toString(36).substring(7);
-    const fileName = `banner-${timestamp}-${randomId}.jpg`;
-    const filePath = `banner-images/${fileName}`;
-
-    console.log('Upload path:', filePath);
+const uploadImage = async (imageUri: string): Promise<string> => {
+    const uploadOptions: ImageUploadOptions = {
+      bucket: 'banners',
+      folder: 'banner-images',
+      aspectRatio: [16, 9],
+      quality: 0.8,
+    };
 
     try {
-      let fileToUpload: Blob | File;
-      
-      // For web platform, use the File object directly
-      if (Platform.OS === 'web' && selectedFile) {
-        console.log('Using selected file for web upload:', selectedFile.name, selectedFile.size, 'bytes');
-        fileToUpload = selectedFile;
-      } else {
-        // For mobile platforms or fallback, convert URI to blob
-        console.log('Converting URI to blob for mobile upload');
-        const response = await fetch(imageUri);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
-        }
-        fileToUpload = await response.blob();
-      }
-      
-      console.log('File prepared for upload. Size:', fileToUpload.size, 'bytes, Type:', fileToUpload.type);
-      
-      // Validate file
-      if (fileToUpload.size === 0) {
-        throw new Error('Selected image is empty or corrupted');
-      }
-      
-      if (fileToUpload.size > 52428800) { // 50MB limit
-        throw new Error('Image is too large. Please select an image smaller than 50MB.');
-      }
-
-      const { data, error } = await supabase.storage
-        .from('banners')
-        .upload(filePath, fileToUpload, {
-          contentType: fileToUpload.type || 'image/jpeg',
-          upsert: false
-        });
-
-      if (error) {
-        console.error('Storage upload error:', error);
-        if (error.message.includes('Bucket not found')) {
-          throw new Error('Storage bucket not found. Please run the database setup script first.');
-        }
-        if (error.message.includes('not allowed')) {
-          throw new Error('Upload not allowed. Please check storage permissions.');
-        }
-        throw new Error(`Storage upload failed: ${error.message}`);
-      }
-
-      console.log('Upload successful:', data);
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('banners')
-        .getPublicUrl(filePath);
-
-      console.log('Public URL generated:', publicUrl);
-      return publicUrl;
+      const uploadResult = await ImageUploadService.uploadImageFromUri(imageUri, uploadOptions);
+      return uploadResult.publicUrl;
     } catch (error: any) {
-      console.error('Upload image error:', error);
+      console.error('Banner upload failed:', error);
       throw error;
     }
   };

@@ -18,6 +18,7 @@ import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Database } from '@/types/database';
 import * as ImagePicker from 'expo-image-picker';
+import { ImageUploadService, ImageUploadOptions } from '@/utils/imageUpload';
 
 type Category = Database['public']['Tables']['categories']['Row'] & {
   product_count?: number;
@@ -367,65 +368,22 @@ function CategoryModal({
   };
 
   const handleImageUpload = async () => {
+    const uploadOptions: ImageUploadOptions = {
+      bucket: 'category-icons',
+      folder: 'category-images',
+      aspectRatio: [1, 1],
+      quality: 0.8,
+    };
+
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        setUploading(true);
-        const image = result.assets[0];
-        
-        // Create a unique filename
-        const timestamp = Date.now();
-        const randomId = Math.random().toString(36).substring(7);
-        
-        // Get file extension from mimeType or URI
-        let fileExt = 'jpg'; // default
-        if (image.mimeType) {
-          const mimeMap: { [key: string]: string } = {
-            'image/jpeg': 'jpg',
-            'image/jpg': 'jpg',
-            'image/png': 'png',
-            'image/webp': 'webp',
-            'image/gif': 'gif'
-          };
-          fileExt = mimeMap[image.mimeType] || 'jpg';
-        } else if (image.uri && !image.uri.startsWith('data:')) {
-          // Only try to get extension from URI if it's not a data URI
-          const uriExt = image.uri.split('.').pop()?.toLowerCase();
-          if (uriExt && ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(uriExt)) {
-            fileExt = uriExt === 'jpeg' ? 'jpg' : uriExt;
-          }
-        }
-        
-        const filename = `${timestamp}-${randomId}.${fileExt}`;
-        const filePath = `category-images/${filename}`;
-
-        // Convert to blob
-        const response = await fetch(image.uri);
-        const blob = await response.blob();
-
-        // Upload to Supabase Storage
-        const { data, error } = await supabase.storage
-          .from('category-icons')
-          .upload(filePath, blob);
-
-        if (error) throw error;
-
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('category-icons')
-          .getPublicUrl(filePath);
-
-        setImageUrl(publicUrl);
+      setUploading(true);
+      const uploadResult = await ImageUploadService.pickAndUploadImage(uploadOptions);
+      if (uploadResult) {
+        setImageUrl(uploadResult.publicUrl);
       }
     } catch (error) {
       console.error('Error uploading image:', error);
-      Alert.alert('Error', 'Failed to upload image');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to upload image');
     } finally {
       setUploading(false);
     }

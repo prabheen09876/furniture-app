@@ -129,23 +129,42 @@ export default function CheckoutScreen() {
   };
 
   const validateForm = () => {
-    if (step === 1) {
-      if (!fullName || !phone || !address || !city || !state || !zip) {
-        Alert.alert("Error", "Please fill in all required shipping information");
-        return false;
-      }
-      if (phone.length < 10) {
-        Alert.alert("Error", "Please enter a valid phone number");
-        return false;
-      }
-      return true;
+    const requiredFields = [
+      { field: fullName, name: 'Full Name' },
+      { field: phone, name: 'Phone Number' },
+      { field: address, name: 'Street Address' },
+      { field: city, name: 'City' },
+      { field: state, name: 'State' },
+      { field: zip, name: 'Zip Code' }
+    ];
+
+    // Check for empty required fields
+    const emptyField = requiredFields.find(item => !item.field.trim());
+    if (emptyField) {
+      Alert.alert("Incomplete Information", `Please enter your ${emptyField.name.toLowerCase()}`);
+      return false;
     }
+
+    // Validate phone number format (minimum 10 digits)
+    const phoneRegex = /^\d{10,}$/;
+    if (!phoneRegex.test(phone.replace(/\D/g, ''))) {
+      Alert.alert("Invalid Phone Number", "Please enter a valid 10-digit phone number");
+      return false;
+    }
+
+    // Validate zip code (exactly 6 digits)
+    const zipRegex = /^\d{6}$/;
+    if (!zipRegex.test(zip)) {
+      Alert.alert("Invalid Zip Code", "Please enter a valid 6-digit zip code");
+      return false;
+    }
+
     return true;
   };
 
   const nextStep = () => {
-    if (step < 2) {
-      setStep(step + 1);
+    if (validateForm()) {
+      setStep(2); // Only proceed to next step if validation passes
     }
   };
 
@@ -179,8 +198,10 @@ export default function CheckoutScreen() {
       </View>
       
       {/* Contact Information */}
-      <BlurView intensity={40} style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>Full Name *</Text>
+      <BlurView intensity={40} style={[styles.inputContainer, !fullName && step === 1 && styles.requiredField]}>
+        <Text style={styles.inputLabel}>
+          Full Name <Text style={styles.requiredAsterisk}>*</Text>
+        </Text>
         <TextInput
           style={styles.input}
           value={fullName}
@@ -190,8 +211,10 @@ export default function CheckoutScreen() {
         />
       </BlurView>
       
-      <BlurView intensity={40} style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>Phone Number *</Text>
+      <BlurView intensity={40} style={[styles.inputContainer, !phone && step === 1 && styles.requiredField]}>
+        <Text style={styles.inputLabel}>
+          Phone Number <Text style={styles.requiredAsterisk}>*</Text>
+        </Text>
         <TextInput
           style={styles.input}
           value={phone}
@@ -204,8 +227,10 @@ export default function CheckoutScreen() {
       </BlurView>
       
       {/* Address Information */}
-      <BlurView intensity={40} style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>Street Address *</Text>
+      <BlurView intensity={40} style={[styles.inputContainer, !address && step === 1 && styles.requiredField]}>
+        <Text style={styles.inputLabel}>
+          Street Address <Text style={styles.requiredAsterisk}>*</Text>
+        </Text>
         <TextInput
           style={styles.input}
           value={address}
@@ -229,8 +254,10 @@ export default function CheckoutScreen() {
       </BlurView>
       
       <View style={styles.rowInputs}>
-        <BlurView intensity={40} style={[styles.inputContainer, { flex: 2, marginRight: 10 }]}>
-          <Text style={styles.inputLabel}>City *</Text>
+        <BlurView intensity={40} style={[styles.inputContainer, { flex: 2, marginRight: 10 }, !city && step === 1 && styles.requiredField]}>
+          <Text style={styles.inputLabel}>
+            City <Text style={styles.requiredAsterisk}>*</Text>
+          </Text>
           <TextInput
             style={styles.input}
             value={city}
@@ -240,8 +267,10 @@ export default function CheckoutScreen() {
           />
         </BlurView>
         
-        <BlurView intensity={40} style={[styles.inputContainer, { flex: 1 }]}>
-          <Text style={styles.inputLabel}>State *</Text>
+        <BlurView intensity={40} style={[styles.inputContainer, { flex: 1 }, !state && step === 1 && styles.requiredField]}>
+          <Text style={styles.inputLabel}>
+            State <Text style={styles.requiredAsterisk}>*</Text>
+          </Text>
           <TextInput
             style={styles.input}
             value={state}
@@ -252,8 +281,10 @@ export default function CheckoutScreen() {
         </BlurView>
       </View>
       
-      <BlurView intensity={40} style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>Zip Code *</Text>
+      <BlurView intensity={40} style={[styles.inputContainer, !zip && step === 1 && styles.requiredField]}>
+        <Text style={styles.inputLabel}>
+          Zip Code <Text style={styles.requiredAsterisk}>*</Text>
+        </Text>
         <TextInput
           style={styles.input}
           value={zip}
@@ -714,5 +745,15 @@ const styles = StyleSheet.create({
     color: '#8B7355',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  requiredField: {
+    borderWidth: 1,
+    borderColor: '#FF6B6B',
+    borderRadius: 16,
+  },
+  requiredAsterisk: {
+    color: '#FF6B6B',
+    fontSize: 16,
+    lineHeight: 16,
   },
 });

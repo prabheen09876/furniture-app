@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { Search, Bell, ChevronDown } from 'lucide-react-native';
+import { Search, Bell, ChevronDown, Maximize } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { ProductGrid } from './ProductGrid';
@@ -481,7 +481,7 @@ const renderHeader = (originalSearchBarOpacity: Animated.AnimatedInterpolation<n
           styles.scrollContent,
           { 
             paddingTop: CATEGORIES_HEIGHT + 20,
-            paddingBottom: TAB_BAR_HEIGHT + 40,
+            paddingBottom: TAB_BAR_HEIGHT + 50,
             minHeight: Dimensions.get('window').height - (HEADER_HEIGHT + TAB_BAR_HEIGHT),
           }
         ]}
@@ -500,7 +500,7 @@ const renderHeader = (originalSearchBarOpacity: Animated.AnimatedInterpolation<n
         >
           {/* Glassmorphism effect with BlurView */}
           <BlurView 
-            intensity={25} 
+            intensity={50} 
             tint="light" 
             style={styles.glassmorphismEffect}
           />
@@ -638,6 +638,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 12,
     backgroundColor: '#F5F0E8',
+    marginHorizontal: 200,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',

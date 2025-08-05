@@ -81,43 +81,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true;
     
-    const initializeAuth = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Error getting session:', error);
-          if (isMounted) {
-            setUser(null);
-            setLoading(false);
-          }
-          return;
-        }
-        
-        console.log('Session restored:', session?.user?.email || 'No session');
-        
-        if (isMounted) {
-          setUser(session?.user ?? null);
-        }
-        
-        if (session?.user) {
-          await checkAdminStatus(session.user.id, { current: isMounted });
-        }
-        
-        if (isMounted) {
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('Exception during auth initialization:', error);
-        if (isMounted) {
-          setUser(null);
-          setLoading(false);
-        }
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Error getting session:', error);
       }
-    };
-    
-    initializeAuth();
+      if (isMounted) {
+        setUser(session?.user ?? null);
+      }
+      if (session?.user) {
+        checkAdminStatus(session.user.id, { current: isMounted });
+      }
+      if (isMounted) {
+        setLoading(false);
+      }
+    });
 
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.email);
       if (isMounted) {

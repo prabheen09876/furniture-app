@@ -1,9 +1,8 @@
-import { Slot, router, useSegments } from 'expo-router';
+import { Slot, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { AuthProvider, useAuth } from '../contexts/AuthContext';
-import { AuthGuard } from '../components/AuthGuard';
+import { AuthProvider } from '../contexts/AuthContext';
 import TabBar from './TabBar';
 import { CartProvider } from '../contexts/CartContext';
 import { WishlistProvider } from '../contexts/WishlistContext';
@@ -16,34 +15,17 @@ function LayoutContent() {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <AuthProvider>
-        <AuthGuard>
-          <CartProvider>
-            <WishlistProvider>
-              <AppContent />
-              <StatusBar style={isDarkMode ? 'light' : 'dark'} />
-            </WishlistProvider>
-          </CartProvider>
-        </AuthGuard>
+        <CartProvider>
+          <WishlistProvider>
+            <View style={styles.content}>
+              <Slot />
+            </View>
+            <TabBar onSearchPress={() => router.replace('/search')} />
+            <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+          </WishlistProvider>
+        </CartProvider>
       </AuthProvider>
     </View>
-  );
-}
-
-function AppContent() {
-  const { user } = useAuth();
-  const segments = useSegments();
-  const isAuthScreen = segments[0] === 'auth';
-  const shouldShowTabBar = user && !isAuthScreen;
-  
-  return (
-    <>
-      <View style={styles.content}>
-        <Slot />
-      </View>
-      {shouldShowTabBar && (
-        <TabBar onSearchPress={() => router.replace('/search')} />
-      )}
-    </>
   );
 }
 

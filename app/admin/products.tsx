@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Switch, Modal, ScrollView, Alert, ActivityIndicator, StyleSheet, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Switch, Modal, ScrollView, Alert, ActivityIndicator, StyleSheet, Image, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { ArrowLeft, Plus, Search, CreditCard as Edit3, Trash2, Eye, Package, DollarSign, Settings, ChevronDown } from 'lucide-react-native';
@@ -698,23 +698,48 @@ function ProductModal({
       const filename = `${timestamp}-${randomId}.${fileExt}`;
       const filePath = `product-images/${filename}`;
       
-      // Convert local image to blob for upload
+      // Convert local image to blob for upload (APK-compatible approach)
       let blob: Blob;
       
       try {
-        // Check if it's a data URL (base64)
-        if (imageUri.startsWith('data:')) {
-          // Convert data URL to blob
-          const response = await fetch(imageUri);
-          blob = await response.blob();
-        } else if (imageUri.startsWith('blob:') || imageUri.startsWith('http')) {
-          // Web platform or already a blob URL
-          const response = await fetch(imageUri);
-          blob = await response.blob();
+        if (Platform.OS === 'web') {
+          // Web platform - use fetch API
+          if (imageUri.startsWith('data:')) {
+            // Convert data URL to blob
+            const response = await fetch(imageUri);
+            blob = await response.blob();
+          } else if (imageUri.startsWith('blob:') || imageUri.startsWith('http')) {
+            // Web platform blob or HTTP URL
+            const response = await fetch(imageUri);
+            blob = await response.blob();
+          } else {
+            // For React Native Web file URIs
+            const response = await fetch(imageUri);
+            blob = await response.blob();
+          }
         } else {
-          // For React Native Web file URIs
+          // Mobile platform - use direct fetch approach (works in APK builds)
+          console.log('Mobile platform detected, using fetch approach for:', imageUri);
+          
+          // Determine MIME type from file extension
+          let mimeType = 'image/jpeg'; // default
+          const extension = imageUri.split('.').pop()?.toLowerCase();
+          if (extension === 'png') mimeType = 'image/png';
+          else if (extension === 'webp') mimeType = 'image/webp';
+          else if (extension === 'gif') mimeType = 'image/gif';
+          
+          console.log('Trying direct fetch approach...');
           const response = await fetch(imageUri);
+          if (!response.ok) {
+            throw new Error(`Fetch failed with status: ${response.status}`);
+          }
           blob = await response.blob();
+          console.log('Fetch successful, blob size:', blob.size);
+          
+          // Validate blob
+          if (!blob || blob.size === 0) {
+            throw new Error('Fetch returned invalid blob');
+          }
         }
         
         // Validate blob
@@ -724,12 +749,14 @@ function ProductModal({
         
         console.log('Blob created successfully:', {
           size: blob.size,
-          type: blob.type
+          type: blob.type,
+          platform: Platform.OS
         });
         
       } catch (fetchError) {
         console.error('Failed to create blob from image URI:', fetchError);
-        throw new Error('Failed to process the selected image. Please try a different image.');
+        console.error('Platform:', Platform.OS, 'URI:', imageUri);
+        throw new Error(`Failed to process the selected image on ${Platform.OS}. Please try a different image.`);
       }
       
       // Upload to Supabase Storage
@@ -779,7 +806,9 @@ function ProductModal({
       const updatedImages = [...images, newImage];
       setImages(updatedImages);
       
+      console.log('Image uploaded successfully:', newImage);
       return newImage;
+      
     } catch (error) {
       console.error('Error uploading image:', error);
       throw error;
