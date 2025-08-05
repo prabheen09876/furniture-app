@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import type { ImagePickerResult } from 'expo-image-picker';
+import type { ImagePickerResult, MediaTypeOptions } from 'expo-image-picker';
 import { X, ImagePlus } from 'lucide-react-native';
 import { ProductImage as DBProductImage } from '@/types/database';
 
@@ -46,7 +46,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
       // The parent component should handle the loading state
       const result: ImagePickerResult = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,

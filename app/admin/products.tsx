@@ -8,6 +8,8 @@ import { supabase } from '@/lib/supabase';
 import { Database } from '@/lib/database.types';
 import { formatPrice } from '@/utils/format';
 import ImageUploader from '@/components/ImageUploader';
+import * as FileSystem from 'expo-file-system';
+import { decode } from 'base64-arraybuffer';
 
 type Product = Database['public']['Tables']['products']['Row'];
 type ProductImage = Database['public']['Tables']['product_images']['Row'];
@@ -718,27 +720,98 @@ function ProductModal({
             blob = await response.blob();
           }
         } else {
-          // Mobile platform - use direct fetch approach (works in APK builds)
-          console.log('Mobile platform detected, using fetch approach for:', imageUri);
+          // Mobile platform - Use expo-file-system for reliable file reading
+          console.log('Mobile platform detected, using expo-file-system for:', imageUri);
           
-          // Determine MIME type from file extension
           let mimeType = 'image/jpeg'; // default
-          const extension = imageUri.split('.').pop()?.toLowerCase();
-          if (extension === 'png') mimeType = 'image/png';
-          else if (extension === 'webp') mimeType = 'image/webp';
-          else if (extension === 'gif') mimeType = 'image/gif';
+          let base64Data: string | null = null;
           
-          console.log('Trying direct fetch approach...');
-          const response = await fetch(imageUri);
-          if (!response.ok) {
-            throw new Error(`Fetch failed with status: ${response.status}`);
+          try {
+            // Determine MIME type from file extension
+            const extension = imageUri.split('.').pop()?.toLowerCase();
+            if (extension === 'png') mimeType = 'image/png';
+            else if (extension === 'webp') mimeType = 'image/webp';
+            else if (extension === 'gif') mimeType = 'image/gif';
+            
+            // Read file as base64 using expo-file-system
+            base64Data = await FileSystem.readAsStringAsync(imageUri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            
+            if (!base64Data || base64Data.length === 0) {
+              throw new Error('Base64 data is empty after FileSystem read');
+            }
+            
+            console.log('FileSystem base64 data length:', base64Data.length);
+            
+            // For Android, we'll upload the base64 directly to Supabase
+            // Supabase Storage accepts base64 encoded data
+            console.log('Using base64 upload for Android');
+            
+          } catch (fileSystemError) {
+            console.error('FileSystem read failed:', fileSystemError);
+            throw new Error('Unable to read image file on Android. Please try selecting a different image.');
           }
-          blob = await response.blob();
-          console.log('Fetch successful, blob size:', blob.size);
           
-          // Validate blob
-          if (!blob || blob.size === 0) {
-            throw new Error('Fetch returned invalid blob');
+          // For Android, we'll handle the upload differently
+          if (base64Data) {
+            console.log('Attempting upload to path:', filePath);
+            console.log('Base64 data length:', base64Data.length);
+            
+            // Create a blob from base64 using the decode function from Supabase
+            // This approach has been tested to work with React Native Android
+            const base64FileData = base64Data.replace(/^data:image\/\w+;base64,/, '');
+            const { data, error } = await supabase.storage
+              .from('products')
+              .upload(filePath, decode(base64FileData), {
+                contentType: mimeType,
+                cacheControl: '3600',
+                upsert: false
+              });
+            
+            if (error) {
+              console.error('Storage upload error:', error);
+              console.error('Error details:', JSON.stringify(error, null, 2));
+              
+              // Provide specific error messages
+              if (error.message?.includes('bucket')) {
+                throw new Error('Storage bucket not found. Please run the storage setup SQL script first.');
+              } else if (error.message?.includes('policy')) {
+                throw new Error('Permission denied. Please check storage policies.');
+              } else if (error.message?.includes('size')) {
+                throw new Error('Image file is too large. Please select a smaller image.');
+              } else if (error.message?.includes('content')) {
+                throw new Error('No content provided. The image data may be corrupted.');
+              } else {
+                throw new Error(`Upload failed: ${error.message}`);
+              }
+            }
+            
+            console.log('Upload successful:', data);
+            
+            // Get the public URL
+            const { data: { publicUrl } } = supabase.storage
+              .from('products')
+              .getPublicUrl(filePath);
+            
+            console.log('Android upload: public URL generated:', publicUrl);
+            
+            // Create a new UI product image directly from the Android upload
+            // Skip the regular upload code below since we've already uploaded
+            const newImage: UIProductImage = {
+              id: `temp-${timestamp}-${randomId}`,
+              image_url: publicUrl,
+              alt_text: `Product image ${images.length + 1}`
+            };
+            
+            // Update the images array
+            const updatedImages = [...images, newImage];
+            setImages(updatedImages);
+            
+            console.log('Image uploaded successfully:', newImage);
+            return newImage;
+          } else {
+            throw new Error('Failed to process image data');
           }
         }
         
@@ -767,6 +840,7 @@ function ProductModal({
       const { data, error } = await supabase.storage
         .from('products')
         .upload(filePath, blob, {
+          contentType: blob.type || 'image/jpeg',
           cacheControl: '3600',
           upsert: false
         });

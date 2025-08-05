@@ -34,7 +34,9 @@
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.RECORD_AUDIO"
-      ]
+      ],
+      "usesCleartextTraffic": true,
+      "networkSecurityConfig": "network_security_config"
     },
     "web": {
       "bundler": "metro",

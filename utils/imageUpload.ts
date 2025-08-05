@@ -3,6 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
 import { supabase } from '@/lib/supabase';
+import { decode } from 'base64-arraybuffer';
 
 export interface ImageUploadOptions {
   bucket: string;
@@ -129,6 +130,55 @@ export class ImageUploadService {
         // Mobile platform - use enhanced processing for Android compatibility
         console.log('Mobile platform: Using enhanced processing');
         
+        // For Android, we'll use a different approach
+        if (Platform.OS === 'android') {
+          console.log('Android platform: Using direct base64 approach');
+          
+          try {
+            // First verify the file exists
+            const fileInfo = await FileSystem.getInfoAsync(imageUri);
+            if (!fileInfo.exists) {
+              throw new Error('File does not exist at the specified URI');
+            }
+            
+            // Read the file directly as base64
+            const base64Data = await FileSystem.readAsStringAsync(imageUri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            
+            if (!base64Data || base64Data.length === 0) {
+              throw new Error('Failed to read file as base64');
+            }
+            
+            console.log('Android: Successfully read file as base64, length:', base64Data.length);
+            
+            // Upload to Supabase using base64 approach
+            const uploadResult = await this.uploadToSupabase(options.bucket, filePath, base64Data, metadata?.mimeType);
+            
+            // Get public URL
+            const { data: { publicUrl } } = supabase.storage
+              .from(options.bucket)
+              .getPublicUrl(filePath);
+            
+            console.log('Android: Upload completed successfully using base64 approach:', {
+              filePath,
+              publicUrl,
+              uploadPath: uploadResult?.path
+            });
+            
+            return {
+              publicUrl,
+              filePath,
+              width: metadata?.originalWidth,
+              height: metadata?.originalHeight,
+            };
+          } catch (androidError) {
+            console.error('Android direct base64 approach failed:', androidError);
+            // Fall through to the blob approach as a fallback
+          }
+        }
+        
+        // For iOS or Android fallback
         const processResult = await this.processImageForMobile(imageUri, {
           maxWidth: options.maxWidth || 2048,
           maxHeight: options.maxHeight || 2048,
@@ -161,7 +211,7 @@ export class ImageUploadService {
       console.log('Upload completed successfully:', {
         filePath,
         publicUrl,
-        uploadPath: uploadResult.path
+        uploadPath: uploadResult?.path || filePath
       });
 
       return {
@@ -190,7 +240,45 @@ export class ImageUploadService {
     }
   ): Promise<{ blob: Blob; width?: number; height?: number }> {
     
-    // Strategy 1: Try expo-image-manipulator (best quality, Android compatible)
+    // Special handling for Android platform
+    if (Platform.OS === 'android') {
+      try {
+        console.log('Android platform detected, using expo-file-system for direct base64 upload');
+        
+        // Get file info first to validate the file exists
+        const fileInfo = await FileSystem.getInfoAsync(imageUri);
+        if (!fileInfo.exists) {
+          throw new Error('File does not exist at the specified URI');
+        }
+        
+        console.log('Android file info:', fileInfo);
+        
+        // Read the file as base64 using expo-file-system - most reliable for Android
+        const base64Data = await FileSystem.readAsStringAsync(imageUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        
+        if (!base64Data || base64Data.length === 0) {
+          throw new Error('Failed to read file as base64');
+        }
+        
+        console.log('Android base64 read successful, length:', base64Data.length);
+        
+        // Clean the base64 data (remove any potential data URL prefix)
+        const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
+        
+        // Create a blob from the base64 data
+        const response = await fetch(`data:image/jpeg;base64,${cleanBase64}`);
+        const blob = await response.blob();
+        
+        console.log('Android blob created successfully, size:', blob.size);
+        return { blob };
+      } catch (androidError) {
+        console.error('Android-specific approach failed:', androidError);
+      }
+    }
+    
+    // Strategy 1 (non-Android): Try expo-image-manipulator (best quality)
     try {
       console.log('Attempting image manipulation...');
       
@@ -306,15 +394,20 @@ export class ImageUploadService {
    */
   private static base64ToBlob(base64: string, mimeType: string = 'image/jpeg'): Blob {
     try {
-      const binaryString = atob(base64);
+      // Clean base64 data if it's a data URL
+      const cleanBase64 = base64.replace(/^data:image\/\w+;base64,/, '');
+      const binaryString = atob(cleanBase64);
       const bytes = new Uint8Array(binaryString.length);
       
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
       
-      return new Blob([bytes], { type: mimeType });
+      // Use type assertions to bypass TypeScript's strict type checking
+      // React Native's Blob implementation differs from the web standard
+      return new Blob([bytes as any], { type: mimeType } as any);
     } catch (error) {
+      console.error('Failed to convert base64 to blob:', error);
       throw new Error('Failed to convert base64 to blob');
     }
   }
@@ -343,16 +436,47 @@ export class ImageUploadService {
   }
 
   /**
-   * Upload blob to Supabase Storage
+   * Upload blob or ArrayBuffer to Supabase Storage
    */
-  private static async uploadToSupabase(bucket: string, filePath: string, blob: Blob) {
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(filePath, blob, {
-        contentType: blob.type || 'image/jpeg',
-        cacheControl: '3600',
-        upsert: false
-      });
+  private static async uploadToSupabase(bucket: string, filePath: string, blobOrBase64: Blob | string, mimeType?: string) {
+    let data;
+    let error;
+    
+    if (Platform.OS === 'android' && typeof blobOrBase64 === 'string') {
+      // For Android, use base64-arraybuffer to convert base64 to ArrayBuffer
+      console.log('Android: Using base64-arraybuffer for direct upload');
+      
+      // Clean any data URL prefix if present
+      const cleanBase64 = blobOrBase64.replace(/^data:image\/\w+;base64,/, '');
+      
+      // Upload the ArrayBuffer directly to Supabase
+      // Note: Supabase API accepts Uint8Array from decode() for RN Android
+      const decodedArray = decode(cleanBase64);
+      const result = await supabase.storage
+        .from(bucket)
+        .upload(filePath, decodedArray as unknown as Blob, {
+          contentType: mimeType || 'image/jpeg',
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      data = result.data;
+      error = result.error;
+      
+    } else {
+      // For web and iOS, use blob upload
+      const blob = blobOrBase64 as Blob;
+      const result = await supabase.storage
+        .from(bucket)
+        .upload(filePath, blob, {
+          contentType: blob.type || mimeType || 'image/jpeg',
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      data = result.data;
+      error = result.error;
+    }
 
     if (error) {
       console.error('Supabase upload error:', error);
@@ -365,6 +489,7 @@ export class ImageUploadService {
   /**
    * Create user-friendly error messages
    */
+
   private static createUserFriendlyError(error: any): Error {
     const errorMessage = error?.message || String(error);
     
