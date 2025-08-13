@@ -42,8 +42,8 @@ export default function AuthScreen() {
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+    if (password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters long');
       return;
     }
 
@@ -170,6 +170,11 @@ export default function AuthScreen() {
                   )}
                 </TouchableOpacity>
               </View>
+              {isSignUp && (
+                <Text style={styles.passwordRequirements}>
+                  Password must be at least 8 characters long
+                </Text>
+              )}
             </View>
 
             {isSignUp && (
@@ -319,6 +324,12 @@ const styles = StyleSheet.create({
   eyeButton: {
     paddingHorizontal: 16,
     paddingVertical: 14,
+  },
+  passwordRequirements: {
+    fontSize: 12,
+    color: '#8B7355',
+    marginTop: 6,
+    fontStyle: 'italic',
   },
   authButton: {
     backgroundColor: '#2D1B16',

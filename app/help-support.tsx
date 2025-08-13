@@ -204,7 +204,7 @@ export default function HelpSupportScreen() {
               <Phone size={24} color="#2D1B16" />
             </View>
             <Text style={styles.contactTitle}>Call Us</Text>
-            <Text style={styles.contactInfo}>9999999999</Text>
+            <Text style={styles.contactInfo}>+91 8448449296</Text>
           </BlurView>
           
           <BlurView intensity={40} style={styles.contactCard}>
@@ -212,7 +212,7 @@ export default function HelpSupportScreen() {
               <Mail size={24} color="#2D1B16" />
             </View>
             <Text style={styles.contactTitle}>Email</Text>
-            <Text style={styles.contactInfo}>example.com</Text>
+            <Text style={styles.contactInfo}>support@acequint.com</Text>
           </BlurView>
         </View>
 
