@@ -125,9 +125,12 @@ export default function SettingsScreen() {
             setLoading(true);
             try {
               await signOut();
+              // Always navigate back to home/auth screen regardless of errors
               router.replace('/');
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to sign out');
+              console.error('Sign out error in settings:', error);
+              // Even if there's an error, we should still redirect to home
+              router.replace('/');
             } finally {
               setLoading(false);
             }
@@ -304,6 +307,12 @@ export default function SettingsScreen() {
           <HelpCircle size={20} color="#2D1B16" strokeWidth={1.5} />,
           'Help & Support',
           () => Alert.alert('Help', 'Help & Support would go here')
+        )}
+        
+        {renderArrowItem(
+          <Shield size={20} color="#2D1B16" strokeWidth={1.5} />,
+          'Privacy Policy',
+          () => router.push('/privacy-policy')
         )}
         
         {renderArrowItem(

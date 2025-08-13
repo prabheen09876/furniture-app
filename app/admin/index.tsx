@@ -6,13 +6,16 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { Package, ShoppingCart, Users, DollarSign, TrendingUp, Grid3x3, Settings, ChartBar as BarChart3, TriangleAlert as AlertTriangle, Clock, CircleCheck as CheckCircle2, ArrowLeft, MessageCircle, ShoppingBag, Image } from 'lucide-react-native';
+import { Package, ShoppingCart, Users, DollarSign, TrendingUp, Grid3x3, Settings, ChartBar as BarChart3, TriangleAlert as AlertTriangle, Clock, CircleCheck as CheckCircle2, ArrowLeft, MessageCircle, ShoppingBag, Image, RefreshCw, Bell } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import AdminNotificationBell from '@/components/AdminNotificationBell';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -27,6 +30,15 @@ interface DashboardStats {
   activeProducts: number;
 }
 
+interface AnalyticsData {
+  dailyOrders: number[];
+  dailyRevenue: number[];
+  topProducts: { name: string; sales: number }[];
+  ordersByStatus: { status: string; count: number }[];
+  userGrowth: number;
+  conversionRate: number;
+}
+
 export default function AdminDashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
@@ -39,11 +51,144 @@ export default function AdminDashboard() {
     recentOrders: 0,
     activeProducts: 0,
   });
+  const [analytics, setAnalytics] = useState<AnalyticsData>({
+    dailyOrders: [],
+    dailyRevenue: [],
+    topProducts: [],
+    ordersByStatus: [],
+    userGrowth: 0,
+    conversionRate: 0,
+  });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchDashboardStats();
+    fetchAnalytics();
   }, []);
+
+  const fetchAnalytics = async () => {
+    try {
+      // Fetch last 7 days of orders
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      
+      const { data: recentOrders } = await supabase
+        .from('orders')
+        .select('created_at, total_amount, status')
+        .gte('created_at', sevenDaysAgo);
+
+      // Process daily orders and revenue
+      const dailyData: { [key: string]: { orders: number; revenue: number } } = {};
+      const last7Days = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - i));
+        return date.toISOString().split('T')[0];
+      });
+
+      last7Days.forEach(date => {
+        dailyData[date] = { orders: 0, revenue: 0 };
+      });
+
+      recentOrders?.forEach(order => {
+        const date = order.created_at.split('T')[0];
+        if (dailyData[date]) {
+          dailyData[date].orders++;
+          dailyData[date].revenue += Number(order.total_amount) || 0;
+        }
+      });
+
+      const dailyOrders = last7Days.map(date => dailyData[date].orders);
+      const dailyRevenue = last7Days.map(date => dailyData[date].revenue);
+
+      // Fetch top products
+      const { data: topProductsData } = await supabase
+        .from('order_items')
+        .select('product_id, quantity, products(name)')
+        .limit(5);
+
+      const productSales: { [key: string]: { name: string; sales: number } } = {};
+      topProductsData?.forEach(item => {
+        const productName = item.products?.name || 'Unknown';
+        if (!productSales[item.product_id]) {
+          productSales[item.product_id] = { name: productName, sales: 0 };
+        }
+        productSales[item.product_id].sales += item.quantity;
+      });
+
+      const topProducts = Object.values(productSales)
+        .sort((a, b) => b.sales - a.sales)
+        .slice(0, 5);
+
+      // Orders by status
+      const statusCounts: { [key: string]: number } = {};
+      recentOrders?.forEach(order => {
+        statusCounts[order.status] = (statusCounts[order.status] || 0) + 1;
+      });
+
+      const ordersByStatus = Object.entries(statusCounts).map(([status, count]) => ({
+        status,
+        count,
+      }));
+
+      // Calculate user growth (new users in last 7 days vs previous 7 days)
+      const { count: newUsers } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact' })
+        .gte('created_at', sevenDaysAgo);
+
+      const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+      const { count: previousUsers } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact' })
+        .gte('created_at', fourteenDaysAgo)
+        .lt('created_at', sevenDaysAgo);
+
+      const userGrowth = previousUsers ? ((newUsers! - previousUsers) / previousUsers) * 100 : 0;
+
+      // Calculate conversion rate (orders / users)
+      const { count: totalUsers } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact' });
+      
+      const { count: totalOrders } = await supabase
+        .from('orders')
+        .select('id', { count: 'exact' });
+
+      const conversionRate = totalUsers ? (totalOrders! / totalUsers) * 100 : 0;
+
+      setAnalytics({
+        dailyOrders,
+        dailyRevenue,
+        topProducts,
+        ordersByStatus,
+        userGrowth,
+        conversionRate,
+      });
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+    }
+  };
+
+  const resetAnalytics = async () => {
+    Alert.alert(
+      'Reset Analytics',
+      'This will clear all analytics data and recalculate from the database. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            setRefreshing(true);
+            await fetchDashboardStats();
+            await fetchAnalytics();
+            setRefreshing(false);
+            Alert.alert('Success', 'Analytics data has been reset and recalculated.');
+          },
+        },
+      ]
+    );
+  };
 
   const fetchDashboardStats = async () => {
     try {
@@ -131,11 +276,11 @@ export default function AdminDashboard() {
       route: '/admin/banners'
     },
     {
-      title: 'Create Support Table',
-      description: 'Set up support messages table',
-      icon: Settings,
-      color: '#0891B2',
-      route: '/admin/create-support-table'
+      title: 'Notifications',
+      description: 'Send push notifications',
+      icon: Bell,
+      color: '#F59E0B',
+      route: '/admin/notifications'
     },
   ];
 
@@ -213,8 +358,19 @@ export default function AdminDashboard() {
             <Text style={styles.title}>Admin Dashboard</Text>
             <Text style={styles.subtitle}>Welcome back, {user?.email?.split('@')[0]}</Text>
           </View>
-          <View style={styles.settingsButton}>
-            <Settings size={20} color="#2D1B16" strokeWidth={2} />
+          <View style={styles.headerActions}>
+            <AdminNotificationBell 
+              onNotificationPress={(notification) => {
+                if (notification.orderId) {
+                  router.push(`/admin/order-details/${notification.orderId}`);
+                } else if (notification.type === 'low_stock') {
+                  router.push('/admin/products');
+                }
+              }}
+            />
+            <TouchableOpacity style={styles.settingsButton}>
+              <Settings size={20} color="#2D1B16" strokeWidth={2} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -286,34 +442,72 @@ export default function AdminDashboard() {
           </View>
         </View>
         
-        {/* Database Utilities */}
+        {/* Analytics Section */}
         <View style={styles.actionsContainer}>
-          <Text style={styles.sectionTitle}>Database Utilities</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Analytics Overview</Text>
+            <TouchableOpacity 
+              style={styles.resetButton}
+              onPress={resetAnalytics}
+              disabled={refreshing}
+            >
+              {refreshing ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <RefreshCw size={18} color="#FFF" strokeWidth={2} />
+              )}
+            </TouchableOpacity>
+          </View>
           <BlurView intensity={40} style={styles.metricsCard}>
-            <TouchableOpacity 
-              style={styles.utilityButton}
-              onPress={() => router.push('/admin/create-support-table')}
-            >
-              <Text style={styles.utilityButtonText}>Create Support Messages Table</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.utilityButton}
-              onPress={() => router.push('/admin/create-users-table')}
-            >
-              <Text style={styles.utilityButtonText}>Create Users Table</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.utilityButton}
-              onPress={() => router.push('/admin/create-products-table')}
-            >
-              <Text style={styles.utilityButtonText}>Create Products Table</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.utilityButton}
-              onPress={() => router.push('/admin/create-orders-table')}
-            >
-              <Text style={styles.utilityButtonText}>Create Orders Table</Text>
-            </TouchableOpacity>
+            {/* Daily Orders Chart */}
+            <View style={styles.chartSection}>
+              <Text style={styles.chartTitle}>Last 7 Days Orders</Text>
+              <View style={styles.miniChart}>
+                {analytics.dailyOrders.map((value, index) => (
+                  <View key={index} style={styles.barContainer}>
+                    <View 
+                      style={[
+                        styles.bar,
+                        { 
+                          height: Math.max(5, (value / Math.max(...analytics.dailyOrders, 1)) * 60),
+                          backgroundColor: '#4F46E5'
+                        }
+                      ]} 
+                    />
+                    <Text style={styles.barLabel}>{value}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Top Products */}
+            <View style={styles.chartSection}>
+              <Text style={styles.chartTitle}>Top Products</Text>
+              {analytics.topProducts.slice(0, 3).map((product, index) => (
+                <View key={index} style={styles.topProductItem}>
+                  <Text style={styles.topProductName} numberOfLines={1}>
+                    {index + 1}. {product.name}
+                  </Text>
+                  <Text style={styles.topProductSales}>{product.sales} sold</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Key Metrics */}
+            <View style={styles.keyMetrics}>
+              <View style={styles.metricBox}>
+                <Text style={styles.metricBoxValue}>
+                  {analytics.userGrowth > 0 ? '+' : ''}{analytics.userGrowth.toFixed(1)}%
+                </Text>
+                <Text style={styles.metricBoxLabel}>User Growth</Text>
+              </View>
+              <View style={styles.metricBox}>
+                <Text style={styles.metricBoxValue}>
+                  {analytics.conversionRate.toFixed(1)}%
+                </Text>
+                <Text style={styles.metricBoxLabel}>Conversion Rate</Text>
+              </View>
+            </View>
           </BlurView>
         </View>
 
@@ -374,6 +568,10 @@ const styles = StyleSheet.create({
   headerContent: {
     flex: 1,
     marginLeft: 16,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   title: {
     fontSize: 24,
@@ -639,5 +837,90 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  resetButton: {
+    backgroundColor: '#2D1B16',
+    borderRadius: 20,
+    padding: 8,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chartSection: {
+    marginBottom: 20,
+  },
+  chartTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2D1B16',
+    marginBottom: 12,
+  },
+  miniChart: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'flex-end',
+    height: 80,
+  },
+  barContainer: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 2,
+  },
+  bar: {
+    width: '80%',
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  barLabel: {
+    fontSize: 10,
+    color: '#8B7355',
+  },
+  topProductItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(139, 115, 85, 0.1)',
+  },
+  topProductName: {
+    flex: 1,
+    fontSize: 13,
+    color: '#2D1B16',
+    marginRight: 8,
+  },
+  topProductSales: {
+    fontSize: 12,
+    color: '#8B7355',
+    fontWeight: '500',
+  },
+  keyMetrics: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 16,
+  },
+  metricBox: {
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 12,
+    minWidth: 100,
+  },
+  metricBoxValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2D1B16',
+    marginBottom: 4,
+  },
+  metricBoxLabel: {
+    fontSize: 11,
+    color: '#8B7355',
+    textAlign: 'center',
   },
 });

@@ -22,8 +22,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./app/icon.png",
-        "backgroundColor": "#2D1B16"
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#F5F0E8"
       },
       "package": "com.acequint.app",
       "versionCode": 1,
@@ -34,9 +34,7 @@
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.RECORD_AUDIO"
-      ],
-      "usesCleartextTraffic": true,
-      "networkSecurityConfig": "network_security_config"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -48,7 +46,17 @@
       "expo-font",
       "expo-web-browser",
       "expo-image-picker",
-      "expo-camera"
+      "expo-camera",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#2D1B16",
+          "sounds": [
+            "./assets/notification-sound.wav"
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false

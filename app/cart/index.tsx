@@ -81,10 +81,10 @@ export default function CartScreen() {
     <View style={styles.itemContainer}>
       <View style={styles.itemImageContainer}>
         <Image 
-          source={{ uri: item.products.image_url || 'https://via.placeholder.com/150' }} 
+          source={{ uri: item.products.image_url || require('@/assets/images/placeholder').placeholderImageBase64 }} 
           style={styles.itemImage} 
           resizeMode="cover"
-          defaultSource={{ uri: 'https://via.placeholder.com/150' }}
+          defaultSource={{ uri: require('@/assets/images/placeholder').placeholderImageBase64 }}
         />
       </View>
       <View style={styles.itemDetails}>
@@ -123,10 +123,10 @@ export default function CartScreen() {
     <View style={styles.itemContainer}>
       <View style={styles.itemImageContainer}>
         <Image 
-          source={{ uri: item.products.image_url || 'https://via.placeholder.com/150' }} 
+          source={{ uri: item.products.image_url || require('@/assets/images/placeholder').placeholderImageBase64 }} 
           style={styles.itemImage} 
           resizeMode="cover"
-          defaultSource={{ uri: 'https://via.placeholder.com/150' }}
+          defaultSource={{ uri: require('@/assets/images/placeholder').placeholderImageBase64 }}
         />
       </View>
       <View style={styles.itemDetails}>

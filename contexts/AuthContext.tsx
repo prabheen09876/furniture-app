@@ -1,22 +1,20 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useRef } from 'react';
-import { supabase } from '@/lib/supabase';
-import { User } from '@supabase/supabase-js';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
+import { supabase } from '../lib/supabase';
 
 interface AuthContextType {
-  user: User | null;
+  user: any;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string) => Promise<{ error: any, data?: any }>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
-  checkAdminStatus: () => Promise<boolean>;
+  checkAdminStatus: (userId: string, mountedRef: { current: boolean }) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const isMountedRef = useRef(true);
@@ -24,10 +22,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAdminStatus = async (userId?: string, mountedRef = isMountedRef): Promise<boolean> => {
     const userIdToCheck = userId || user?.id;
     if (!userIdToCheck) return false;
+
   
     try {
-      // First check if the user is admin@example.com which should always be admin
-      if (user?.email?.toLowerCase() === 'admin@example.com') {
+      // First check if the user is prabheen09876@gmail.com which should always be admin
+      if (user?.email?.toLowerCase() === 'prabheen09876@gmail.com') {
         // Ensure admin record exists with all required fields
         const adminUserData = {
           id: userIdToCheck,
@@ -158,17 +157,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const trimmedEmail = email.trim().toLowerCase();
       console.log('Attempting to sign up with:', { email: trimmedEmail });
       
-      // Removed the initial email check to avoid 406 errors
-      // Supabase Auth will handle duplicate email checks for us
+      // Simple email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        const validationError = { message: 'Please enter a valid email address', status: 400 };
+        console.error('Email validation failed:', validationError);
+        return { error: validationError };
+      }
       
-      // Proceed with signup
+      // Proceed with signup - disable email confirmation for now
       const { data, error } = await supabase.auth.signUp({
         email: trimmedEmail,
         password,
         options: {
-          emailRedirectTo: undefined, // Will use the site URL from Supabase settings
+          emailRedirectTo: undefined,
           data: {
-            full_name: '', // Will be set by the trigger
+            full_name: '',
             email: trimmedEmail
           }
         },
@@ -228,8 +232,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         emailConfirmed: !!data.user.email_confirmed_at
       });
       
-      // If this is the admin user, add admin privileges
-      if (data.user && trimmedEmail === 'admin@example.com') {
+      // Check if this is the admin user (prabheen09876@gmail.com) and ensure admin privileges
+      if (trimmedEmail === 'prabheen09876@gmail.com') {
         try {
           console.log('Setting up admin privileges for:', trimmedEmail);
           const adminUserData = {
@@ -258,24 +262,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
       
-      // Verify the profile was created
-      if (data.user) {
-        try {
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('id, email')
-            .eq('id', data.user.id)
-            .single();
-            
-          if (profileError) {
-            console.error('Error verifying profile creation:', profileError);
-          } else if (profile) {
-            console.log('Profile verified:', profile);
-          }
-        } catch (e) {
-          console.error('Exception verifying profile:', e);
-        }
-      }
+      // Note: Profile creation will be handled by the auth state change listener
+      // after the user is fully authenticated, not during signup
       
       return { 
         error: null,
@@ -301,19 +289,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Sign out error:', error);
-      }
+      
+      // Reset user state regardless of API call success
       if (isMountedRef.current) {
+        setUser(null);
         setIsAdmin(false);
       }
+      
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          // Check for AuthSessionMissingError
+          if (error.message && error.message.includes('Auth session missing')) {
+            console.log('No active session to sign out from, continuing');
+            // This is not a critical error, user is already signed out
+          } else {
+            console.error('Sign out error:', error);
+          }
+        }
+      } catch (signOutError) {
+        // Handle AuthSessionMissingError specifically
+        if (signOutError instanceof Error && 
+            signOutError.name === 'AuthSessionMissingError') {
+          console.log('No active session to sign out from, continuing');
+          // This is not a critical error, user is already signed out
+        } else {
+          console.error('Sign out exception:', signOutError);
+        }
+      }
     } catch (error) {
-      console.error('Sign out exception:', error);
+      console.error('Sign out outer exception:', error);
     } finally {
       setLoading(false);
     }
   };
+
+
 
   useEffect(() => {
     return () => { isMountedRef.current = false; };
@@ -327,7 +338,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp, 
       signOut, 
       isAdmin,
-      checkAdminStatus 
+      checkAdminStatus
     }}>
       {children}
     </AuthContext.Provider>

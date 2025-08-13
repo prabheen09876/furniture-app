@@ -462,6 +462,178 @@ export interface Database {
           }
         ]
       }
+      user_push_tokens: {
+        Row: {
+          id: string
+          user_id: string
+          token: string
+          platform: string
+          device_id: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          token: string
+          platform: string
+          device_id?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          token?: string
+          platform?: string
+          device_id?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_push_tokens_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      user_notification_preferences: {
+        Row: {
+          id: string
+          user_id: string
+          orders_updates: boolean
+          promotions: boolean
+          app_updates: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          orders_updates?: boolean
+          promotions?: boolean
+          app_updates?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          orders_updates?: boolean
+          promotions?: boolean
+          app_updates?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      scheduled_notifications: {
+        Row: {
+          id: string
+          title: string
+          body: string
+          data: Json | null
+          send_at: string
+          sent: boolean
+          target_type: string
+          target_users: string[] | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          body: string
+          data?: Json | null
+          send_at: string
+          sent?: boolean
+          target_type: string
+          target_users?: string[] | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          body?: string
+          data?: Json | null
+          send_at?: string
+          sent?: boolean
+          target_type?: string
+          target_users?: string[] | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_notifications_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      notification_history: {
+        Row: {
+          id: string
+          title: string
+          body: string
+          data: Json | null
+          sent_at: string
+          target_type: string
+          target_count: number
+          success_count: number
+          failure_count: number
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          title: string
+          body: string
+          data?: Json | null
+          sent_at?: string
+          target_type: string
+          target_count: number
+          success_count: number
+          failure_count: number
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          title?: string
+          body?: string
+          data?: Json | null
+          sent_at?: string
+          target_type?: string
+          target_count?: number
+          success_count?: number
+          failure_count?: number
+          created_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_history_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {}
     Functions: {

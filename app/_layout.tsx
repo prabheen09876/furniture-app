@@ -7,6 +7,7 @@ import TabBar from './TabBar';
 import { CartProvider } from '../contexts/CartContext';
 import { WishlistProvider } from '../contexts/WishlistContext';
 import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
+import { NotificationProvider } from '../contexts/NotificationContext';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 function LayoutContent() {
@@ -15,15 +16,17 @@ function LayoutContent() {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <AuthProvider>
-        <CartProvider>
-          <WishlistProvider>
-            <View style={styles.content}>
-              <Slot />
-            </View>
-            <TabBar onSearchPress={() => router.replace('/search')} />
-            <StatusBar style={isDarkMode ? 'light' : 'dark'} />
-          </WishlistProvider>
-        </CartProvider>
+        <NotificationProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <View style={styles.content}>
+                <Slot />
+              </View>
+              <TabBar onSearchPress={() => router.replace('/search')} />
+              <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+            </WishlistProvider>
+          </CartProvider>
+        </NotificationProvider>
       </AuthProvider>
     </View>
   );

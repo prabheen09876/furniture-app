@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import adminNotificationService from '@/services/adminNotificationService';
 
 export default function CheckoutScreen() {
   const { user } = useAuth();
@@ -109,17 +110,45 @@ export default function CheckoutScreen() {
         .insert(orderItems);
 
       if (itemsError) throw itemsError;
-      
-      // Clear cart
-      for (const item of items) {
-        await removeFromCart(item.id);
-      }
-      
-      Alert.alert(
-        "Order Placed Successfully!",
-        `Your order has been placed successfully. Order will be delivered with pay-on-delivery option.\n\nOrder Number: ${orderNumber}`,
-        [{ text: "View Orders", onPress: () => router.replace('/orders') }]
-      );
+    
+    // Send notification to admin users about new order
+    try {
+      const orderNotificationData = {
+        orderId: orderData[0].id,
+        orderNumber: orderNumber,
+        customerName: fullName,
+        customerEmail: user.email || 'No email',
+        totalAmount: getTotalPrice(),
+        itemCount: items.length,
+      };
+
+      // Send admin notification asynchronously (don't block order completion)
+      adminNotificationService.sendNewOrderNotificationToAdmins(orderNotificationData)
+        .then(success => {
+          if (success) {
+            console.log('✅ Admin notification sent for new order:', orderNumber);
+          } else {
+            console.log('⚠️ Failed to send admin notification for order:', orderNumber);
+          }
+        })
+        .catch(error => {
+          console.error('❌ Error sending admin notification:', error);
+        });
+    } catch (notificationError) {
+      // Don't fail the order if notification fails
+      console.error('Admin notification error (non-blocking):', notificationError);
+    }
+    
+    // Clear cart
+    for (const item of items) {
+      await removeFromCart(item.id);
+    }
+    
+    Alert.alert(
+      "Order Placed Successfully!",
+      `Your order has been placed successfully. Order will be delivered with pay-on-delivery option.\n\nOrder Number: ${orderNumber}\n\n📱 Admin has been notified!`,
+      [{ text: "View Orders", onPress: () => router.replace('/orders') }]
+    );
     } catch (error) {
       console.error('Error placing order:', error);
       Alert.alert('Error', 'Failed to place order. Please try again.');

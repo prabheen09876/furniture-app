@@ -43,7 +43,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({ products, onAddToCart 
           <BlurView intensity={40} style={styles.productCardInner}>
             <View style={styles.productImageContainer}>
               <Image 
-                source={{ uri: product.image_url || 'https://via.placeholder.com/150' }} 
+                source={{ uri: product.image_url || require('@/assets/images/placeholder').placeholderImageBase64 }} 
                 style={styles.productImage} 
               />
               {product.original_price && product.original_price > product.price && (
@@ -195,3 +195,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+
+export default ProductGrid;

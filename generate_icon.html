@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AceQuint App Icon Generator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+        
+        .icon-container {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .icon-wrapper {
+            text-align: center;
+        }
+        
+        .icon-wrapper h3 {
+            margin: 10px 0;
+            color: #333;
+        }
+        
+        .icon-wrapper p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        canvas {
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background: #2D1B16;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background: #8B7355;
+        }
+        
+        .instructions {
+            max-width: 800px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .instructions h2 {
+            color: #2D1B16;
+            margin-top: 0;
+        }
+        
+        .instructions ol {
+            line-height: 1.8;
+        }
+        
+        .instructions code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="instructions">
+        <h2>📱 AceQuint App Icon Generator</h2>
+        <p>This page generates app icons for the Furniture Expo app with proper contrast and design.</p>
+        <ol>
+            <li>The icons below are automatically generated with the correct design</li>
+            <li>Right-click on each icon and select "Save image as..."</li>
+            <li>Save them with the following names:
+                <ul>
+                    <li><code>icon.png</code> - Main app icon (save to <code>app/</code> folder)</li>
+                    <li><code>adaptive-icon-foreground.png</code> - Android adaptive icon foreground</li>
+                    <li><code>notification-icon.png</code> - Notification icon (save to <code>assets/</code> folder)</li>
+                </ul>
+            </li>
+            <li>Update <code>app.json</code> to use the new adaptive icon if needed</li>
+            <li>The design uses a furniture/home icon with proper contrast against backgrounds</li>
+        </ol>
+    </div>
+    
+    <div class="icon-container">
+        <!-- Main App Icon -->
+        <div class="icon-wrapper">
+            <h3>Main App Icon</h3>
+            <p>1024x1024px - For app stores</p>
+            <canvas id="mainIcon" width="1024" height="1024"></canvas>
+            <div class="controls">
+                <button onclick="downloadIcon('mainIcon', 'icon.png')">Download</button>
+            </div>
+        </div>
+        
+        <!-- Adaptive Icon Foreground -->
+        <div class="icon-wrapper">
+            <h3>Adaptive Icon Foreground</h3>
+            <p>1024x1024px - Android adaptive</p>
+            <canvas id="adaptiveIcon" width="1024" height="1024"></canvas>
+            <div class="controls">
+                <button onclick="downloadIcon('adaptiveIcon', 'adaptive-icon-foreground.png')">Download</button>
+            </div>
+        </div>
+        
+        <!-- Notification Icon -->
+        <div class="icon-wrapper">
+            <h3>Notification Icon</h3>
+            <p>96x96px - For notifications</p>
+            <canvas id="notificationIcon" width="96" height="96"></canvas>
+            <div class="controls">
+                <button onclick="downloadIcon('notificationIcon', 'notification-icon.png')">Download</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function drawMainIcon() {
+            const canvas = document.getElementById('mainIcon');
+            const ctx = canvas.getContext('2d');
+            const size = 1024;
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#8B7355');
+            gradient.addColorStop(1, '#2D1B16');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // White circle background for logo
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size/3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw furniture icon (sofa shape)
+            ctx.fillStyle = '#2D1B16';
+            const centerX = size/2;
+            const centerY = size/2;
+            const iconSize = size/4;
+            
+            // Sofa base
+            ctx.fillRect(centerX - iconSize, centerY - iconSize/4, iconSize * 2, iconSize/2);
+            
+            // Sofa back
+            ctx.fillRect(centerX - iconSize, centerY - iconSize/2, iconSize * 2, iconSize/3);
+            
+            // Sofa arms
+            ctx.fillRect(centerX - iconSize - iconSize/6, centerY - iconSize/2, iconSize/3, iconSize * 0.8);
+            ctx.fillRect(centerX + iconSize - iconSize/6, centerY - iconSize/2, iconSize/3, iconSize * 0.8);
+            
+            // Sofa legs
+            ctx.fillRect(centerX - iconSize + 20, centerY + iconSize/4, 30, 60);
+            ctx.fillRect(centerX + iconSize - 50, centerY + iconSize/4, 30, 60);
+            
+            // Add "AQ" text below
+            ctx.font = 'bold 120px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#8B7355';
+            ctx.fillText('AQ', centerX, centerY + iconSize * 1.5);
+        }
+        
+        function drawAdaptiveIcon() {
+            const canvas = document.getElementById('adaptiveIcon');
+            const ctx = canvas.getContext('2d');
+            const size = 1024;
+            
+            // Transparent background
+            ctx.clearRect(0, 0, size, size);
+            
+            // White circle with shadow
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = 40;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 10;
+            
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size/2.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Reset shadow
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
+            // Draw furniture icon
+            ctx.fillStyle = '#2D1B16';
+            const centerX = size/2;
+            const centerY = size/2 - 50;
+            const iconSize = size/4;
+            
+            // Sofa shape (simplified)
+            // Back
+            ctx.beginPath();
+            ctx.roundRect(centerX - iconSize, centerY - iconSize/2, iconSize * 2, iconSize/2.5, 20);
+            ctx.fill();
+            
+            // Seat
+            ctx.beginPath();
+            ctx.roundRect(centerX - iconSize, centerY - iconSize/6, iconSize * 2, iconSize/2, 20);
+            ctx.fill();
+            
+            // Arms
+            ctx.beginPath();
+            ctx.roundRect(centerX - iconSize * 1.2, centerY - iconSize/2, iconSize/3, iconSize * 0.8, 15);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.roundRect(centerX + iconSize * 0.87, centerY - iconSize/2, iconSize/3, iconSize * 0.8, 15);
+            ctx.fill();
+            
+            // Legs
+            ctx.fillRect(centerX - iconSize + 40, centerY + iconSize/3, 35, 50);
+            ctx.fillRect(centerX + iconSize - 75, centerY + iconSize/3, 35, 50);
+            
+            // Brand text
+            ctx.font = 'bold 140px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#8B7355';
+            ctx.fillText('AceQuint', centerX, centerY + iconSize * 1.8);
+        }
+        
+        function drawNotificationIcon() {
+            const canvas = document.getElementById('notificationIcon');
+            const ctx = canvas.getContext('2d');
+            const size = 96;
+            
+            // White background
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, size, size);
+            
+            // Simple furniture icon
+            ctx.fillStyle = '#2D1B16';
+            const centerX = size/2;
+            const centerY = size/2;
+            const iconSize = size/3;
+            
+            // Simplified sofa shape
+            ctx.fillRect(centerX - iconSize, centerY - iconSize/3, iconSize * 2, iconSize/2);
+            ctx.fillRect(centerX - iconSize, centerY - iconSize/1.5, iconSize * 2, iconSize/2.5);
+            ctx.fillRect(centerX - iconSize * 1.2, centerY - iconSize/1.5, iconSize/2.5, iconSize);
+            ctx.fillRect(centerX + iconSize * 0.8, centerY - iconSize/1.5, iconSize/2.5, iconSize);
+        }
+        
+        function downloadIcon(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        // Draw all icons on load
+        window.onload = function() {
+            drawMainIcon();
+            drawAdaptiveIcon();
+            drawNotificationIcon();
+        };
+    </script>
+</body>
+</html>

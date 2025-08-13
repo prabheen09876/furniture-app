@@ -2,6 +2,7 @@ import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import theme from './theme';
+import { useCart } from '../contexts/CartContext';
 
 type TabBarItemProps = {
   icon?: string;
@@ -11,7 +12,7 @@ type TabBarItemProps = {
   isSearch?: boolean;
 };
 
-const TabBarItem = ({ icon, isActive, onPress, label, isSearch }: TabBarItemProps) => (
+const TabBarItem = ({ icon, isActive, onPress, label, isSearch, badgeCount }: TabBarItemProps & { badgeCount?: number }) => (
   <TouchableOpacity
     onPress={onPress}
     style={[
@@ -35,6 +36,11 @@ const TabBarItem = ({ icon, isActive, onPress, label, isSearch }: TabBarItemProp
           color={isActive ? theme.colors.primary : theme.colors.textLight}
           style={styles.icon}
         />
+        {badgeCount && badgeCount > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{badgeCount > 99 ? '99+' : badgeCount}</Text>
+          </View>
+        )}
       </View>
     )}
   </TouchableOpacity>
@@ -47,13 +53,15 @@ type TabBarProps = {
 const TabBar = ({ onSearchPress }: TabBarProps) => {
   const pathname = usePathname();
   const route = pathname === '/' ? 'home' : pathname.replace(/^\//, '').split('/')[0];
-  const activeTab = route === 'cart' ? 'cart' : route === 'profile' ? 'profile' : route;
+  const activeTab = route === 'cart' ? 'cart' : route === 'profile' ? 'profile' : route === 'categories' ? 'categories' : route;
+  const { items } = useCart();
+  const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   
   const tabs = [
     { id: 'home', icon: 'home-outline', label: 'Home', isSearch: false, route: '/' },
     { id: 'categories', icon: 'grid-outline', label: 'Categories', isSearch: false, route: '/categories' },
     { id: 'search', icon: 'search', label: 'Search', isSearch: true },
-    { id: 'cart', icon: 'cart-outline', label: 'Cart', isSearch: false, route: '/cart' },
+    { id: 'cart', icon: 'cart-outline', label: 'Cart', isSearch: false, route: '/cart', badge: cartItemCount },
     { id: 'profile', icon: 'person-outline', label: 'Profile', isSearch: false, route: '/profile' },
   ] as const;
 
@@ -68,6 +76,7 @@ const TabBar = ({ onSearchPress }: TabBarProps) => {
             onPress={tab.isSearch ? onSearchPress : () => router.replace(tab.route)}
             label={tab.label}
             isSearch={tab.isSearch}
+            badgeCount={'badge' in tab ? tab.badge : undefined}
           />
         ))}
       </View>
@@ -136,5 +145,22 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
+  },
+  badge: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#FF6B47',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
   },
 });

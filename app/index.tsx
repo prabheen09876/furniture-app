@@ -68,7 +68,7 @@ interface Category {
 }
 
 export default function HomeScreen() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { addToCart } = useCart();
   const scrollY = useRef(new Animated.Value(0)).current;
   
@@ -283,10 +283,16 @@ const renderHeader = (originalSearchBarOpacity: Animated.AnimatedInterpolation<n
         <Text style={styles.greeting}>{getGreeting()}</Text>
         <View style={styles.titleRow}>
           <Text style={styles.title}>AceQuint</Text>
-          <View style={styles.notificationButton}>
-            <Bell size={22} color="#2D1B16" strokeWidth={2} />
-            <View style={styles.notificationDot} />
-          </View>
+          {!isAdmin && (
+            <TouchableOpacity 
+              style={styles.notificationButton}
+              onPress={() => router.push('/notifications')}
+              activeOpacity={0.7}
+            >
+              <Bell size={22} color="#2D1B16" strokeWidth={2} />
+              <View style={styles.notificationDot} />
+            </TouchableOpacity>
+          )}
         </View>
         <Text style={styles.subtitle}>Shop for the things you need</Text>
       </View>

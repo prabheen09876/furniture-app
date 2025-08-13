@@ -29,6 +29,12 @@ type Profile = Database['public']['Tables']['profiles']['Row'] & {
   order_count?: number;
   total_spent?: number;
   is_admin?: boolean;
+  phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+  email?: string | null;
 };
 
 export default function AdminUsers() {
@@ -42,32 +48,49 @@ export default function AdminUsers() {
 
   const fetchUsers = async () => {
     try {
-      // Fetch profiles with order statistics
+      // Fetch profiles to get user data
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (profilesError) throw profilesError;
+      
+      if (!profiles || profiles.length === 0) {
+        Alert.alert('No Users', 'No user profiles found in the database.');
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
 
       // Fetch admin users
       const { data: adminUsers, error: adminError } = await supabase
         .from('admin_users')
-        .select('id')
+        .select('*')
         .eq('is_active', true);
 
-      if (adminError) throw adminError;
+      if (adminError) {
+        console.warn('Admin users fetch warning:', adminError);
+        // Continue without admin data if table doesn't exist or has issues
+      }
 
-      const adminIds = new Set(adminUsers?.map(admin => admin.id) || []);
+      // Create a set of admin user IDs
+      const adminIds = new Set();
+      if (adminUsers && adminUsers.length > 0) {
+        adminUsers.forEach(admin => {
+          // Use id as the user_id since that's how it's stored in the database
+          if (admin.id) adminIds.add(admin.id);
+        });
+      }
 
       // Fetch order statistics for each user
       const usersWithStats = await Promise.all(
-        (profiles || []).map(async (profile) => {
+        profiles.map(async (profile) => {
           const { data: orders } = await supabase
             .from('orders')
             .select('total_amount')
             .eq('user_id', profile.id)
-            .eq('payment_status', 'paid');
+            .not('status', 'eq', 'cancelled');
 
           const orderCount = orders?.length || 0;
           const totalSpent = orders?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
@@ -77,7 +100,7 @@ export default function AdminUsers() {
             order_count: orderCount,
             total_spent: totalSpent,
             is_admin: adminIds.has(profile.id),
-          };
+          } as Profile; // Cast to Profile type to satisfy TypeScript
         })
       );
 
@@ -100,12 +123,31 @@ export default function AdminUsers() {
           text: 'Confirm',
           onPress: async () => {
             try {
+              // First get user email
+              const { data: userData, error: userError } = await supabase
+                .from('profiles')
+                .select('email')
+                .eq('id', userId)
+                .single();
+
+              if (userError) throw userError;
+              
+              // Check if email is null
+              if (!userData?.email) {
+                Alert.alert('Error', 'User email not found');
+                return;
+              }
+
               const { error } = await supabase
                 .from('admin_users')
-                .insert({
-                  id: userId,
+                .upsert({
+                  id: userId,  // Use id as the primary key
+                  email: userData.email,
                   role: 'admin',
+                  permissions: ['all'],
                   is_active: true,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
                 });
 
               if (error) throw error;
@@ -137,7 +179,7 @@ export default function AdminUsers() {
             try {
               const { error } = await supabase
                 .from('admin_users')
-                .delete()
+                .update({ is_active: false, updated_at: new Date().toISOString() })
                 .eq('id', userId);
 
               if (error) throw error;

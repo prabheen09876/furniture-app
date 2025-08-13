@@ -15,6 +15,7 @@ import { ArrowLeft, Search, Package, Clock, CircleCheck as CheckCircle, Truck, C
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Database } from '@/types/database';
+import adminNotificationService from '@/services/adminNotificationService';
 
 type Order = Database['public']['Tables']['orders']['Row'] & {
   profiles: {
@@ -144,6 +145,47 @@ export default function AdminOrders() {
 
       if (error) throw error;
       
+      // Find the order to get customer details
+      const order = orders.find(o => o.id === orderId);
+      if (order && order.user_id) {
+        // Send push notification to customer
+        const orderNumber = order.order_number || `ORD-${orderId.substring(0, 8).toUpperCase()}`;
+        const customerName = order.profiles?.full_name || 'Customer';
+        
+        // Send notification to user's notification page
+        const notificationService = await import('@/services/notificationService');
+        await notificationService.default.sendOrderNotification(
+          orderId,
+          newStatus,
+          undefined,
+          order.user_id
+        );
+        
+        // Also send admin notification service notification
+        const notificationData = {
+          orderId,
+          orderNumber,
+          customerName,
+          status: newStatus,
+          trackingNumber: updateData.tracking_number,
+          estimatedDelivery: updateData.estimated_delivery ? 
+            new Date(updateData.estimated_delivery).toLocaleDateString() : undefined
+        };
+
+        // Send push notification asynchronously
+        adminNotificationService.sendOrderStatusNotification(notificationData)
+          .then(success => {
+            if (success) {
+              console.log('✅ Push notification sent successfully');
+            } else {
+              console.log('⚠️ Push notification failed to send');
+            }
+          })
+          .catch(error => {
+            console.error('❌ Push notification error:', error);
+          });
+      }
+      
       setOrders(orders.map(order => 
         order.id === orderId ? { ...order, ...updateData } : order
       ));
@@ -151,8 +193,8 @@ export default function AdminOrders() {
       Alert.alert(
         'Success', 
         newStatus === 'shipped' 
-          ? `Order marked as shipped. Tracking number: ${updateData.tracking_number}`
-          : 'Order status updated successfully'
+          ? `Order marked as shipped. Tracking number: ${updateData.tracking_number}\n\n📱 Customer notification sent!`
+          : `Order status updated successfully\n\n📱 Customer notification sent!`
       );
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -261,7 +303,8 @@ export default function AdminOrders() {
             const statusColor = statusColors[order.status as keyof typeof statusColors];
             
             return (
-              <BlurView key={order.id} intensity={40} style={styles.orderCard}>
+              <TouchableOpacity key={order.id} onPress={() => router.push(`/admin/order-details/${order.id}`)}>
+                <BlurView intensity={40} style={styles.orderCard}>
                 <View style={styles.orderHeader}>
                   <View style={styles.orderInfo}>
                     <Text style={styles.orderNumber}>{order.order_number}</Text>
@@ -376,6 +419,7 @@ export default function AdminOrders() {
                   )}
                 </View>
               </BlurView>
+            </TouchableOpacity>
             );
             })
           )}

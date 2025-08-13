@@ -99,6 +99,8 @@ export default function AuthScreen() {
     }
   };
 
+
+
   const isLoading = loading || authLoading;
 
   return (

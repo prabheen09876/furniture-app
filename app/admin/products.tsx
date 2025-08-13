@@ -194,7 +194,7 @@ export default function AdminProducts() {
           {filteredProducts.map((product) => (
             <BlurView key={product.id} intensity={40} style={styles.productCard}>
               <Image 
-                source={{ uri: product.image_url || 'https://via.placeholder.com/150' }} 
+                source={{ uri: product.image_url || require('@/assets/images/placeholder').placeholderImageBase64 }} 
                 style={styles.productImage} 
                 resizeMode="cover"
               />

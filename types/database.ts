@@ -226,6 +226,7 @@ export interface Database {
       admin_users: {
         Row: {
           id: string
+          user_id: string | null
           email: string
           role: string
           is_active: boolean
@@ -235,6 +236,7 @@ export interface Database {
         }
         Insert: {
           id: string
+          user_id?: string | null
           email: string
           role?: string
           is_active?: boolean
@@ -244,6 +246,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          user_id?: string | null
           email?: string
           role?: string
           is_active?: boolean
@@ -343,6 +346,49 @@ export interface Database {
         Relationships: [
           {
             foreignKeyName: "orders_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      user_notifications: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          body: string
+          type: string
+          data: Json | null
+          read: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          body: string
+          type?: string
+          data?: Json | null
+          read?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          body?: string
+          type?: string
+          data?: Json | null
+          read?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notifications_user_id_fkey"
             columns: ["user_id"]
             referencedRelation: "users"
             referencedColumns: ["id"]
