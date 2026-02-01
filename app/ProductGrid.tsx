@@ -28,8 +28,7 @@ interface ProductGridProps {
 }
 
 const { width: screenWidth } = Dimensions.get('window');
-const CARD_MARGIN = 8;
-const CARD_WIDTH = (screenWidth - 120) / 2; // Two cards per row with margins
+// Card width is now percentage-based to ensure 2 per row
 
 export const ProductGrid: React.FC<ProductGridProps> = ({ products, onAddToCart }) => {
   return (
@@ -42,9 +41,9 @@ export const ProductGrid: React.FC<ProductGridProps> = ({ products, onAddToCart 
         >
           <BlurView intensity={40} style={styles.productCardInner}>
             <View style={styles.productImageContainer}>
-              <Image 
-                source={{ uri: product.image_url || require('@/assets/images/placeholder').placeholderImageBase64 }} 
-                style={styles.productImage} 
+              <Image
+                source={{ uri: product.image_url || require('@/assets/images/placeholder').placeholderImageBase64 }}
+                style={styles.productImage}
               />
               {product.original_price && product.original_price > product.price && (
                 <View style={styles.discountBadge}>
@@ -95,11 +94,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   productCard: {
-    width: CARD_WIDTH,
+    width: '48%', // Percentage-based width guarantees 2 per row
     marginBottom: 16,
     borderRadius: 16,
     overflow: 'hidden',
@@ -116,7 +115,7 @@ const styles = StyleSheet.create({
   },
   productImageContainer: {
     width: '100%',
-    height: 120,
+    height: 160, // Increased height for better display
     borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 12,
@@ -131,7 +130,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: '#FF6B47',
+    backgroundColor: '#FF8C00', // Kesari Accent
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -190,7 +189,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#2D1B16',
+    backgroundColor: '#E67300', // Saffron Primary
     alignItems: 'center',
     justifyContent: 'center',
   },

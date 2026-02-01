@@ -12,12 +12,12 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { 
-  ArrowLeft, 
-  MessageCircle, 
-  Mail, 
-  CheckCircle2, 
-  Clock, 
+import {
+  ArrowLeft,
+  MessageCircle,
+  Mail,
+  CheckCircle2,
+  Clock,
   AlertTriangle,
   Send,
   RefreshCw,
@@ -34,10 +34,10 @@ const sendEmail = async (to: string, subject: string, body: string) => {
   console.log(`Sending email to ${to}`);
   console.log(`Subject: ${subject}`);
   console.log(`Body: ${body}`);
-  
+
   // Simulate API call delay
   await new Promise(resolve => setTimeout(resolve, 1000));
-  
+
   // Return success (in a real app, this would be the actual API response)
   return { success: true };
 };
@@ -74,7 +74,7 @@ export default function SupportAdminScreen() {
       router.replace('/');
       return;
     }
-    
+
     fetchMessages();
   }, [isAdmin, filter]);
 
@@ -85,13 +85,13 @@ export default function SupportAdminScreen() {
         .from('support_messages')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (filter !== 'all') {
         query = query.eq('status', filter);
       }
-      
+
       const { data: messagesData, error } = await query;
-      
+
       if (error) {
         console.error('Error fetching support messages:', error);
         Alert.alert('Error', 'Failed to load support messages');
@@ -100,15 +100,15 @@ export default function SupportAdminScreen() {
         const userIds = messagesData
           .filter(msg => msg.user_id)
           .map(msg => msg.user_id as string);
-        
+
         let profilesData: Record<string, { full_name: string | null }> = {};
-        
+
         if (userIds.length > 0) {
           const { data: profiles } = await supabase
             .from('profiles')
             .select('id, full_name')
             .in('id', userIds);
-            
+
           if (profiles) {
             profilesData = profiles.reduce((acc, profile) => {
               acc[profile.id] = { full_name: profile.full_name };
@@ -116,13 +116,13 @@ export default function SupportAdminScreen() {
             }, {} as Record<string, { full_name: string | null }>);
           }
         }
-        
+
         // Combine messages with profiles
         const messagesWithProfiles = messagesData.map(msg => ({
           ...msg,
           profile: msg.user_id ? profilesData[msg.user_id] : undefined
         }));
-        
+
         setMessages(messagesWithProfiles);
       }
     } catch (error) {
@@ -147,14 +147,14 @@ export default function SupportAdminScreen() {
 
   const handleSendResponse = async () => {
     if (!selectedMessage) return;
-    
+
     if (responseText.trim() === '') {
       Alert.alert('Error', 'Please enter a response');
       return;
     }
-    
+
     setSendingResponse(true);
-    
+
     try {
       // Update the message in the database
       const { error: updateError } = await supabase
@@ -166,18 +166,18 @@ export default function SupportAdminScreen() {
           updated_at: new Date().toISOString()
         })
         .eq('id', selectedMessage.id);
-      
+
       if (updateError) {
         throw updateError;
       }
-      
+
       // Send email to the user
       const emailResult = await sendEmail(
         selectedMessage.email,
-        'Response to Your Support Request - AceQuint Furniture',
+        'Response to Your Support Request - Kesarwala Sweets',
         `Dear Customer,
 
-Thank you for contacting AceQuint Furniture Support.
+Thank you for contacting Kesarwala Support.
 
 Your Message:
 "${selectedMessage.message}"
@@ -188,17 +188,19 @@ Our Response:
 If you have any further questions, please don't hesitate to contact us.
 
 Best regards,
-AceQuint Furniture Support Team`
+Kesarwala Support Team`
       );
-      
+
       if (emailResult.success) {
         Alert.alert(
           'Response Sent',
           'Your response has been sent to the customer via email.',
-          [{ text: 'OK', onPress: () => {
-            setModalVisible(false);
-            fetchMessages();
-          }}]
+          [{
+            text: 'OK', onPress: () => {
+              setModalVisible(false);
+              fetchMessages();
+            }
+          }]
         );
       }
     } catch (error) {
@@ -218,11 +220,11 @@ AceQuint Furniture Support Team`
           updated_at: new Date().toISOString()
         })
         .eq('id', message.id);
-      
+
       if (error) {
         throw error;
       }
-      
+
       fetchMessages();
     } catch (error) {
       console.error('Error updating status:', error);
@@ -291,15 +293,15 @@ AceQuint Furniture Support Team`
   return (
     <LinearGradient colors={['#F5E6D3', '#E8D5C4']} style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
+        <TouchableOpacity
+          style={styles.backButton}
           onPress={() => router.back()}
         >
           <ArrowLeft size={24} color="#2D1B16" />
         </TouchableOpacity>
         <Text style={styles.title}>Support Messages</Text>
-        <TouchableOpacity 
-          style={styles.refreshButton} 
+        <TouchableOpacity
+          style={styles.refreshButton}
           onPress={fetchMessages}
         >
           <RefreshCw size={20} color="#2D1B16" />
@@ -324,8 +326,8 @@ AceQuint Furniture Support Team`
           <MessageCircle size={48} color="#8B7355" strokeWidth={1} />
           <Text style={styles.emptyText}>No messages found</Text>
           <Text style={styles.emptySubtext}>
-            {filter === 'all' 
-              ? 'There are no support messages yet.' 
+            {filter === 'all'
+              ? 'There are no support messages yet.'
               : `There are no ${filter} messages.`}
           </Text>
         </View>
@@ -339,7 +341,7 @@ AceQuint Furniture Support Team`
                   <Text style={styles.messageEmail}>{message.email}</Text>
                 </View>
                 <View style={[
-                  styles.statusBadge, 
+                  styles.statusBadge,
                   { backgroundColor: getStatusBgColor(message.status) }
                 ]}>
                   {getStatusIcon(message.status)}
@@ -351,18 +353,18 @@ AceQuint Furniture Support Team`
                   </Text>
                 </View>
               </View>
-              
+
               <View style={styles.messageInfo}>
                 <Text style={styles.messageDate}>
                   {new Date(message.created_at).toLocaleString()}
                 </Text>
               </View>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.messageContent}
                 onPress={() => toggleMessageExpand(message.id)}
               >
-                <Text 
+                <Text
                   style={styles.messageText}
                   numberOfLines={expandedMessages[message.id] ? undefined : 2}
                 >
@@ -376,11 +378,11 @@ AceQuint Furniture Support Team`
                   )}
                 </View>
               </TouchableOpacity>
-              
+
               {message.admin_response && (
                 <View style={styles.responsePreview}>
                   <Text style={styles.responseLabel}>Response:</Text>
-                  <Text 
+                  <Text
                     style={styles.responseText}
                     numberOfLines={expandedMessages[message.id] ? undefined : 2}
                   >
@@ -388,27 +390,27 @@ AceQuint Furniture Support Team`
                   </Text>
                 </View>
               )}
-              
+
               <View style={styles.messageActions}>
                 {message.status !== 'pending' && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.actionButton, styles.pendingButton]}
                     onPress={() => handleUpdateStatus(message, 'pending')}
                   >
                     <Text style={styles.actionButtonText}>Mark Pending</Text>
                   </TouchableOpacity>
                 )}
-                
+
                 {message.status !== 'in_progress' && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.actionButton, styles.progressButton]}
                     onPress={() => handleUpdateStatus(message, 'in_progress')}
                   >
                     <Text style={styles.actionButtonText}>In Progress</Text>
                   </TouchableOpacity>
                 )}
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={[styles.actionButton, styles.respondButton]}
                   onPress={() => handleSelectMessage(message)}
                 >
@@ -422,7 +424,7 @@ AceQuint Furniture Support Team`
           <View style={styles.bottomSpace} />
         </ScrollView>
       )}
-      
+
       {/* Response Modal */}
       <Modal
         visible={modalVisible}
@@ -434,26 +436,26 @@ AceQuint Furniture Support Team`
           <BlurView intensity={40} style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Respond to Message</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.closeButton}
                 onPress={() => setModalVisible(false)}
               >
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
             </View>
-            
+
             {selectedMessage && (
               <>
                 <View style={styles.modalMessageInfo}>
                   <Text style={styles.modalLabel}>From:</Text>
                   <Text style={styles.modalEmail}>{selectedMessage.email}</Text>
                 </View>
-                
+
                 <View style={styles.modalMessageContent}>
                   <Text style={styles.modalLabel}>Message:</Text>
                   <Text style={styles.modalMessage}>{selectedMessage.message}</Text>
                 </View>
-                
+
                 <View style={styles.responseInputContainer}>
                   <Text style={styles.modalLabel}>Your Response:</Text>
                   <TextInput
@@ -465,7 +467,7 @@ AceQuint Furniture Support Team`
                     onChangeText={setResponseText}
                   />
                 </View>
-                
+
                 <TouchableOpacity
                   style={[styles.sendButton, sendingResponse && styles.sendButtonDisabled]}
                   onPress={handleSendResponse}
@@ -480,7 +482,7 @@ AceQuint Furniture Support Team`
                     </>
                   )}
                 </TouchableOpacity>
-                
+
                 <Text style={styles.emailNote}>
                   This response will be sent to the customer via email.
                 </Text>

@@ -22,6 +22,7 @@ import { ProductGrid } from './ProductGrid';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import BannerCarousel from '@/components/BannerCarousel';
+import theme from '@/app/theme';
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('en-IN', {
@@ -49,14 +50,14 @@ type Product = {
 const { width: screenWidth } = Dimensions.get('window');
 
 // Layout constants
-const HEADER_HEIGHT = Platform.OS === 'ios' ? 80 : 80;
+const HEADER_HEIGHT = Platform.OS === 'ios' ? 120 : 100; // Increased base height to capture content vertically
 const HEADER_PADDING_TOP = Platform.OS === 'ios' ? 45 : 25;
 const HEADER_PADDING_BOTTOM = 15;
 const ACTUAL_HEADER_HEIGHT = HEADER_HEIGHT + HEADER_PADDING_TOP + HEADER_PADDING_BOTTOM;
-const CATEGORIES_HEIGHT = 160;
+const CATEGORIES_HEIGHT = 0; // Set to 0 since we removed categories
 const TAB_BAR_HEIGHT = 60;
 const SCREEN_PADDING = 16;
-const TOP_SECTION_HEIGHT = ACTUAL_HEADER_HEIGHT + CATEGORIES_HEIGHT;
+const TOP_SECTION_HEIGHT = ACTUAL_HEADER_HEIGHT + 20; // Just header plus a bit of padding
 
 // Define category type
 interface Category {
@@ -71,7 +72,7 @@ export default function HomeScreen() {
   const { user, isAdmin } = useAuth();
   const { addToCart } = useCart();
   const scrollY = useRef(new Animated.Value(0)).current;
-  
+
   // State for categories
   const [categories, setCategories] = useState<Category[]>([]);
   // State for featured products
@@ -79,40 +80,35 @@ export default function HomeScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Animation values for the product section
-  const productSectionTranslateY = scrollY.interpolate({
-    inputRange: [0, CATEGORIES_HEIGHT * 0.5, CATEGORIES_HEIGHT],
-    outputRange: [0, -CATEGORIES_HEIGHT * 0.5, -CATEGORIES_HEIGHT],
-    extrapolate: 'clamp',
-  });
-  
+  // Removed productSectionTranslateY to fix jitter
+
   // Animation for the product section border radius
   const productSectionBorderRadius = scrollY.interpolate({
     inputRange: [0, CATEGORIES_HEIGHT * 0.3, CATEGORIES_HEIGHT * 0.7],
     outputRange: [24, 12, 0],
     extrapolate: 'clamp',
   });
-  
+
   // Animation for header
   const headerTranslateY = scrollY.interpolate({
-    inputRange: [0, CATEGORIES_HEIGHT],
-    outputRange: [0, -20],
+    inputRange: [0, HEADER_HEIGHT],
+    outputRange: [0, -120], // Move header up significantly to hide it
     extrapolate: 'clamp',
   });
-  
+
   // Animation for search bar - smoother transitions
   const searchBarTranslateY = scrollY.interpolate({
     inputRange: [0, HEADER_HEIGHT * 0.4, HEADER_HEIGHT, HEADER_HEIGHT + 80],
     outputRange: [0, -HEADER_HEIGHT * 0.3, -HEADER_HEIGHT + 70, -HEADER_HEIGHT + 90],
     extrapolate: 'clamp',
   });
-  
+
   const searchBarOpacity = scrollY.interpolate({
-    inputRange: [0, HEADER_HEIGHT * 0.3, HEADER_HEIGHT * 0.7, HEADER_HEIGHT],
-    outputRange: [0, 0.3, 0.8, 1],
+    inputRange: [HEADER_HEIGHT * 0.7, HEADER_HEIGHT * 0.9, HEADER_HEIGHT + 20], // Delayed appearance
+    outputRange: [0, 0.5, 1],
     extrapolate: 'clamp',
   });
-  
+
   const searchBarScale = scrollY.interpolate({
     inputRange: [0, HEADER_HEIGHT * 0.3, HEADER_HEIGHT * 0.7, HEADER_HEIGHT],
     outputRange: [0.8, 0.9, 0.95, 1],
@@ -126,22 +122,12 @@ export default function HomeScreen() {
   });
 
   const headerContentOpacity = scrollY.interpolate({
-    inputRange: [0, HEADER_HEIGHT * 0.3, HEADER_HEIGHT * 0.7],
-    outputRange: [1, 0.7, 0.3],
+    inputRange: [0, HEADER_HEIGHT * 0.2, HEADER_HEIGHT * 0.5],
+    outputRange: [1, 0.5, 0], // Fade out completely before search bar appears
     extrapolate: 'clamp',
   });
 
-  const categoriesTranslateY = scrollY.interpolate({
-    inputRange: [0, CATEGORIES_HEIGHT * 0.5, CATEGORIES_HEIGHT],
-    outputRange: [0, -CATEGORIES_HEIGHT * 0.25, -CATEGORIES_HEIGHT * 0.5],
-    extrapolate: 'clamp',
-  });
-
-  const categoriesOpacity = scrollY.interpolate({
-    inputRange: [0, CATEGORIES_HEIGHT * 0.3, CATEGORIES_HEIGHT * 0.8],
-    outputRange: [1, 0.7, 0.2],
-    extrapolate: 'clamp',
-  });
+  // Removed complex category opacity/translate animations
 
   // Animation for product section shadow
   const productSectionShadow = scrollY.interpolate({
@@ -168,7 +154,7 @@ export default function HomeScreen() {
           .select('id, name, slug, icon_url')
           .eq('is_active', true)
           .order('sort_order');
-        
+
         // If there's an error or no data, use default categories
         if (response.error || !response.data || response.data.length === 0) {
           console.log('Error or no categories found, using defaults');
@@ -176,11 +162,11 @@ export default function HomeScreen() {
           useDefaultCategories();
           return;
         }
-        
+
         // Safely cast the data to the expected type
         // First assert to unknown, then to our expected type to avoid TypeScript errors
         const data = (response.data as unknown) as DBCategory[];
-        
+
         // Map database categories to the format expected by the UI
         const mappedCategories: Category[] = data.map(cat => ({
           id: cat.slug, // Use slug as ID for routing
@@ -188,7 +174,7 @@ export default function HomeScreen() {
           icon_url: cat.icon_url,
           slug: cat.slug
         }));
-        
+
         setCategories(mappedCategories);
       } catch (err) {
         console.error('Error in fetchCategories:', err);
@@ -196,7 +182,7 @@ export default function HomeScreen() {
         useDefaultCategories();
       }
     };
-    
+
     // Helper function for default categories
     const useDefaultCategories = () => {
       const defaultCategories: Category[] = [
@@ -211,114 +197,114 @@ export default function HomeScreen() {
       ];
       setCategories(defaultCategories);
     };
-    
+
     fetchCategories();
   }, []);
 
   const renderCategories = () => {
-  // Ensure we have categories before rendering
-  if (!categories || categories.length === 0) {
-    return null;
-  }
-  
-  // Safely slice the array to prevent errors
-  const firstRow = categories.slice(0, Math.min(4, categories.length));
-  const secondRow = categories.slice(4, Math.min(8, categories.length));
-  
-  // Helper function to render a single category
-  const renderCategory = (category: Category) => (
-    <TouchableOpacity 
-      key={category.id} 
-      style={styles.categoryCard}
-      onPress={() => router.push(`/categories?filter=${category.id}`)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.categoryIconContainer}>
-        {category.icon_url ? (
-          <Image 
-            source={{ uri: category.icon_url }} 
-            style={styles.categoryIconImage} 
-            resizeMode="contain"
-          />
-        ) : (
-          <Text style={styles.categoryIcon}>{category.icon || '📦'}</Text>
-        )}
-      </View>
-      <Text style={styles.categoryName}>{category.name}</Text>
-    </TouchableOpacity>
-  );
-  
-  return (
-    <View style={styles.categoriesContainer}>
-      <View style={styles.categoryRow}>
-        {firstRow.map(renderCategory)}
-      </View>
-      {secondRow.length > 0 && (
-        <View style={styles.categoryRow}>
-          {secondRow.map(renderCategory)}
-        </View>
-      )}
-    </View>
-  );
-};
+    // Ensure we have categories before rendering
+    if (!categories || categories.length === 0) {
+      return null;
+    }
 
-const getGreeting = () => {
-  const currentHour = new Date().getHours();
-  
-  if (currentHour >= 5 && currentHour < 12) {
-    return 'Good Morning';
-  } else if (currentHour >= 12 && currentHour < 17) {
-    return 'Good Afternoon';
-  } else if (currentHour >= 17 && currentHour < 21) {
-    return 'Good Evening';
-  } else {
-    return 'Good Night';
-  }
-};
+    // Safely slice the array to prevent errors
+    const firstRow = categories.slice(0, Math.min(4, categories.length));
+    const secondRow = categories.slice(4, Math.min(8, categories.length));
 
-const renderHeader = (originalSearchBarOpacity: Animated.AnimatedInterpolation<number>, headerContentOpacity: Animated.AnimatedInterpolation<number>) => (
-  <View style={styles.headerContainer}>
-    <Animated.View style={[styles.header, { opacity: headerContentOpacity }]}>
-      <View>
-        <Text style={styles.greeting}>{getGreeting()}</Text>
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>AceQuint</Text>
-          {!isAdmin && (
-            <TouchableOpacity 
-              style={styles.notificationButton}
-              onPress={() => router.push('/notifications')}
-              activeOpacity={0.7}
-            >
-              <Bell size={22} color="#2D1B16" strokeWidth={2} />
-              <View style={styles.notificationDot} />
-            </TouchableOpacity>
+    // Helper function to render a single category
+    const renderCategory = (category: Category) => (
+      <TouchableOpacity
+        key={category.id}
+        style={styles.categoryCard}
+        onPress={() => router.push(`/categories?filter=${category.id}`)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.categoryIconContainer}>
+          {category.icon_url ? (
+            <Image
+              source={{ uri: category.icon_url }}
+              style={styles.categoryIconImage}
+              resizeMode="contain"
+            />
+          ) : (
+            <Text style={styles.categoryIcon}>{category.icon || '📦'}</Text>
           )}
         </View>
-        <Text style={styles.subtitle}>Shop for the things you need</Text>
-      </View>
-    </Animated.View>
-
-    {/* Search Bar */}
-    <Animated.View style={[
-      styles.searchWrapper,
-      { opacity: originalSearchBarOpacity }
-    ]}>
-      <TouchableOpacity 
-        onPress={() => router.push('/search')}
-        activeOpacity={0.8}
-      >
-        <View style={styles.searchContainer}>
-          <Search size={18} color="#8B7355" strokeWidth={2} />
-          <Text style={styles.searchPlaceholder}>Search...</Text>
-        </View>
+        <Text style={styles.categoryName}>{category.name}</Text>
       </TouchableOpacity>
-    </Animated.View>
-  </View>
-);
+    );
+
+    return (
+      <View style={styles.categoriesContainer}>
+        <View style={styles.categoryRow}>
+          {firstRow.map(renderCategory)}
+        </View>
+        {secondRow.length > 0 && (
+          <View style={styles.categoryRow}>
+            {secondRow.map(renderCategory)}
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const getGreeting = () => {
+    const currentHour = new Date().getHours();
+
+    if (currentHour >= 5 && currentHour < 12) {
+      return 'Good Morning';
+    } else if (currentHour >= 12 && currentHour < 17) {
+      return 'Good Afternoon';
+    } else if (currentHour >= 17 && currentHour < 21) {
+      return 'Good Evening';
+    } else {
+      return 'Good Night';
+    }
+  };
+
+  const renderHeader = (originalSearchBarOpacity: Animated.AnimatedInterpolation<number>, headerContentOpacity: Animated.AnimatedInterpolation<number>) => (
+    <View style={styles.headerContainer}>
+      <Animated.View style={[styles.header, { opacity: headerContentOpacity }]}>
+        <View>
+          <Text style={styles.greeting}>{getGreeting()}</Text>
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, { color: theme.colors.text }]}>Kesarwala</Text>
+            {!isAdmin && (
+              <TouchableOpacity
+                style={styles.notificationButton}
+                onPress={() => router.push('/notifications')}
+                activeOpacity={0.7}
+              >
+                <Bell size={22} color={theme.colors.text} strokeWidth={2} />
+                <View style={styles.notificationDot} />
+              </TouchableOpacity>
+            )}
+          </View>
+          <Text style={styles.subtitle}>Premium Indian Sweets</Text>
+        </View>
+      </Animated.View>
+
+      {/* Search Bar */}
+      <Animated.View style={[
+        styles.searchWrapper,
+        { opacity: originalSearchBarOpacity }
+      ]}>
+        <TouchableOpacity
+          onPress={() => router.push('/search')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.searchContainer}>
+            <Search size={18} color={theme.colors.primary} strokeWidth={2} />
+            <Text style={styles.searchPlaceholder}>Search...</Text>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
+  );
 
   const fetchFeaturedProducts = useCallback(async () => {
     let isMounted = true;
-    
+
     try {
       const { data, error } = await supabase
         .from('products')
@@ -341,12 +327,12 @@ const renderHeader = (originalSearchBarOpacity: Animated.AnimatedInterpolation<n
         setLoading(false);
       }
     }
-    
+
     return () => {
       isMounted = false;
     };
   }, []);
-  
+
   const fetchProducts = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -377,7 +363,7 @@ const renderHeader = (originalSearchBarOpacity: Animated.AnimatedInterpolation<n
       router.push('/auth');
       return;
     }
-    
+
     try {
       await addToCart(productId);
       // You might want to show a success message here
@@ -399,8 +385,8 @@ const renderHeader = (originalSearchBarOpacity: Animated.AnimatedInterpolation<n
     return (
       <LinearGradient colors={['#F5E6D3', '#E8D5C4']} style={styles.container}>
         <View style={styles.authPrompt}>
-          <Text style={styles.authTitle}>Welcome to AceQuint</Text>
-          <Text style={styles.authSubtitle}>Sign in to explore our collection</Text>
+          <Text style={styles.authTitle}>Welcome to Kesarwala</Text>
+          <Text style={styles.authSubtitle}>Sign in to explore our premium sweets</Text>
           <TouchableOpacity
             style={styles.authButton}
             onPress={() => router.push('/auth')}
@@ -415,31 +401,31 @@ const renderHeader = (originalSearchBarOpacity: Animated.AnimatedInterpolation<n
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#eeddcb" />
-      
+
       {/* Floating Search Bar that appears when scrolling */}
-      <Animated.View 
+      <Animated.View
         style={[
           styles.floatingSearchContainer,
-          { 
+          {
             transform: [{ translateY: searchBarTranslateY }, { scale: searchBarScale }],
             opacity: searchBarOpacity,
           }
         ]}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => router.push('/search')}
           activeOpacity={0.8}
           style={{ width: '100%' }}
         >
           <View style={styles.searchContainer}>
-            <Search size={18} color="#8B7355" strokeWidth={2} />
+            <Search size={18} color={theme.colors.primary} strokeWidth={2} />
             <Text style={styles.searchPlaceholder}>Search...</Text>
           </View>
         </TouchableOpacity>
       </Animated.View>
-      
+
       {/* Header */}
-      <Animated.View 
+      <Animated.View
         style={[
           styles.headerContainer,
           { transform: [{ translateY: headerTranslateY }] }
@@ -447,90 +433,61 @@ const renderHeader = (originalSearchBarOpacity: Animated.AnimatedInterpolation<n
       >
         {renderHeader(originalSearchBarOpacity, headerContentOpacity)}
       </Animated.View>
-      
+
       {/* Background Gradient (fixed) */}
       <Animated.View
         style={[
           styles.backgroundGradient,
-          { height: TOP_SECTION_HEIGHT },
+          { height: TOP_SECTION_HEIGHT + 100 }, // Extend background further down
         ]}
       >
-        <LinearGradient 
-          colors={['#eeddcb', '#eeddcb']} 
-          style={{ height: '100%', width: '100%' }} 
+        <LinearGradient
+          colors={['#eeddcb', '#eeddcb']}
+          style={{ height: '100%', width: '100%' }}
         />
       </Animated.View>
-      
-      {/* Banner Carousel Section */}
-      <View style={styles.bannerSection}>
-        <BannerCarousel autoPlay={true} autoPlayInterval={4000} />
-      </View>
-      
-      {/* Banner Carousel Section is now rendered above */}
-      
-      {/* Scrollable Product Section */}
-      {/* Products Section (On Top) */}
+
+      {/* Scrollable Main Content */}
       <Animated.ScrollView
-        style={[
-          styles.scrollView, 
-          { 
-            zIndex: 30, // Higher z-index to appear above categories
-            transform: [{ translateY: productSectionTranslateY }],
-          }
-        ]}
+        style={styles.scrollView}
         scrollEventThrottle={16}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }
         )}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { 
-            paddingTop: CATEGORIES_HEIGHT + 20,
-            paddingBottom: TAB_BAR_HEIGHT + 50,
-            minHeight: Dimensions.get('window').height - (HEADER_HEIGHT + TAB_BAR_HEIGHT),
-          }
-        ]}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        <View style={{ height: ACTUAL_HEADER_HEIGHT + 100 }} />
+
+        {/* Categories Section Removed */}
+
+
+        {/* Banner Carousel Section */}
+        <View style={styles.bannerSection}>
+          <BannerCarousel autoPlay={true} autoPlayInterval={4000} />
+        </View>
+
         {/* Product Section Background */}
-        <Animated.View 
-          style={[
-            styles.productSectionBackground,
-            {
-              borderTopLeftRadius: productSectionBorderRadius,
-              borderTopRightRadius: productSectionBorderRadius,
-              shadowOpacity: productSectionShadow,
-            }
-          ]}
-        >
-          {/* Glassmorphism effect with BlurView */}
-          <BlurView 
-            intensity={50} 
-            tint="light" 
-            style={styles.glassmorphismEffect}
-          />
-          {/* Content container positioned on top of the blur */}
-          <View style={styles.contentContainer}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Featured Products</Text>
-              <TouchableOpacity onPress={() => router.push('/categories')}>
-                <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
-            </View>
-            <ProductGrid 
-              products={products} 
-              onAddToCart={handleAddToCart} 
-            />
+        <View style={styles.productSectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Featured Products</Text>
+            <TouchableOpacity onPress={() => router.push('/categories')}>
+              <Text style={styles.seeAllText}>See All</Text>
+            </TouchableOpacity>
           </View>
-        </Animated.View>
+          <ProductGrid
+            products={products}
+            onAddToCart={handleAddToCart}
+          />
+        </View>
       </Animated.ScrollView>
-      
+
       {/* Scroll Indicator */}
-      <Animated.View 
+      <Animated.View
         style={[
           styles.scrollIndicator,
-          { 
+          {
             opacity: scrollY.interpolate({
               inputRange: [0, 50],
               outputRange: [1, 0],
@@ -555,47 +512,16 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 1,
+    bottom: 0, // Make it cover full screen
+    zIndex: -1, // Put it behind everything
   },
-  productSectionBackground: {
-    backgroundColor: '#eeddcb', // Much more transparent background for glassmorphism
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 30, // Increased padding
-    minHeight: Dimensions.get('window').height - (TAB_BAR_HEIGHT + 20), // Full screen height minus tab bar
-    // shadowColor: '#000',
-    // shadowOffset: { width: 0, height: -4 },
-    // shadowRadius: 15,
-    // shadowOpacity: 0.1,
-    // elevation: 15,
-    overflow: 'hidden', // Ensure the blur doesn't extend beyond borders
-    position: 'relative', // To properly position children elements
-  },
-  glassmorphismEffect: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    // backgroundColor: 'rgba(255, 255, 255, 0.05)', // Even more subtle white overlay for increased transparency
-    // backdropFilter is for web only, BlurView handles this in native
-  },
+  // Styles removed
   scrollView: {
     flex: 1,
     backgroundColor: 'transparent',
-    position: 'absolute',
-    top: HEADER_HEIGHT + CATEGORIES_HEIGHT + 10, // Moved down by increasing the top position
-    left: 0,
-    right: 0,
-    bottom: TAB_BAR_HEIGHT,
-    zIndex: 20,
-    height: Dimensions.get('window').height - (HEADER_HEIGHT + TAB_BAR_HEIGHT - 90),
   },
   scrollContent: {
     flexGrow: 1,
-    backgroundColor: 'transparent',
     paddingBottom: TAB_BAR_HEIGHT + 20,
   },
   headerContainer: {
@@ -605,9 +531,9 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 20,
     backgroundColor: '#eeddcb',
-    paddingTop: Platform.OS === 'ios' ? 45 : 25, // Reduced top padding
+    paddingTop: Platform.OS === 'ios' ? 55 : 35, // Increased padding top
     paddingHorizontal: SCREEN_PADDING,
-    paddingBottom: 15, // Reduced bottom padding
+    paddingBottom: 20, // Increased bottom padding
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     // shadowColor: 'rgba(0,0,0,0.1)',
@@ -624,19 +550,19 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 13, // Reduced font size
-    color: '#8B7355',
+    color: theme.colors.textLight,
     marginBottom: 2, // Reduced margin
     fontFamily: 'Inter-Medium',
   },
   title: {
     fontSize: 28, // Reduced font size
     fontFamily: 'Inter-Bold',
-    color: '#2D1B16',
+    color: theme.colors.text,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 14,
-    color: '#8B7355',
+    color: theme.colors.textLight,
     fontFamily: 'Inter-Regular',
   },
   notificationButton: {
@@ -656,7 +582,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#FF6B47',
+    backgroundColor: theme.colors.primary,
   },
   searchWrapper: {
     marginTop: 0,
@@ -673,16 +599,19 @@ const styles = StyleSheet.create({
   },
   floatingSearchContainer: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 30,
+    top: Platform.OS === 'ios' ? 60 : 40,
     left: SCREEN_PADDING,
     right: SCREEN_PADDING,
     zIndex: 30,
-    backgroundColor: 'transparent',
+    backgroundColor: '#eeddcb', // Match header background
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
     shadowColor: '#000',
-    // shadowOffset: { width: 0, height: 2 },
-    // shadowOpacity: 0.1,
-    // shadowRadius: 4,
-    // elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 10,
   },
   searchPlaceholder: {
     marginLeft: 10,
@@ -691,29 +620,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
   },
   categoriesContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: ACTUAL_HEADER_HEIGHT,
-    zIndex: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    paddingBottom: 20,
+    marginTop: 10,
     paddingHorizontal: SCREEN_PADDING,
-    paddingTop: 20, // Reduced padding to eliminate extra space
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-   
+    marginBottom: 20,
   },
   bannerSection: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: ACTUAL_HEADER_HEIGHT + 80, // Add extra margin to ensure it's below header
-    zIndex: 15,
-    backgroundColor: 'transparent',
-    paddingHorizontal: 0,
-    paddingTop: 0,
-    paddingBottom: 10,
+    marginBottom: 25,
+    marginTop: 10,
   },
   categoriesScrollContainer: {
     paddingRight: SCREEN_PADDING,
@@ -754,11 +667,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: 'Inter-Medium',
   },
-  contentContainer: {
-    backgroundColor: 'transparent',
+  productSectionContainer: {
+    backgroundColor: '#FDF6EE', // Warm white/cream background
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingTop: 30,
     paddingHorizontal: SCREEN_PADDING,
-    paddingBottom: 10,
-    // paddingTop: 80,
+    paddingBottom: 20,
+    marginTop: 0, // Reduced margin
+    minHeight: 500, // Ensure it fills some space
+  },
+  // Removed old productSectionBackground and glassmorphismEffect styles as they are replaced by simple container
+  contentContainer: {
+    // Legacy support if needed, or remove
   },
   productsContainer: {
     paddingTop: 10,
@@ -905,6 +826,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
- 
+
 
 });

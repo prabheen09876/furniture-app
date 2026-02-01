@@ -25,12 +25,12 @@ const formatTimeAgo = (dateString: string): string => {
   const now = new Date();
   const date = new Date(dateString);
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  
+
   if (diffInSeconds < 60) return 'just now';
   if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
   if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
   if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-  
+
   return date.toLocaleDateString();
 };
 
@@ -76,7 +76,7 @@ export default function NotificationsScreen() {
         setNotifications([
           {
             id: '1',
-            title: '🎉 Welcome to AceQuint!',
+            title: '🎉 Welcome to Kesarwala!',
             body: 'Thank you for joining us. Start exploring our amazing furniture collection.',
             type: 'system',
             read: false,
@@ -199,7 +199,7 @@ export default function NotificationsScreen() {
 
   const renderNotification = ({ item }: { item: Notification }) => {
     const IconComponent = getNotificationIcon(item.type);
-    
+
     return (
       <TouchableOpacity
         onPress={() => handleNotificationPress(item)}
@@ -269,8 +269,8 @@ export default function NotificationsScreen() {
             renderItem={renderNotification}
             keyExtractor={(item) => item.id}
             refreshControl={
-              <RefreshControl 
-                refreshing={refreshing} 
+              <RefreshControl
+                refreshing={refreshing}
                 onRefresh={fetchNotifications}
                 tintColor="#8B7355"
               />

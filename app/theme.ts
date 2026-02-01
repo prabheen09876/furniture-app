@@ -1,15 +1,17 @@
 const theme = {
   colors: {
-    primary: '#010101',
-    primaryDark: '#141414',
+    primary: '#E67300', // Saffron/Kesari orange - brand color
+    primaryDark: '#C65D00',
     secondary: '#F9B023',
     secondaryLight: '#FFC83A',
-    text: '#010101',
-    textLight: '#616A7D',
-    background: '#eee8dc',
-    white: '#f7ebdf',
-    border: '#eee8dc',
-    success: '#eee8dc',
+    accent: '#FF8C00', // Bright kesari accent
+    text: '#2D1B16',
+    textLight: '#8B7355',
+    background: '#FDF6EE',
+    white: '#FFFBF5',
+    card: '#FFF9F0',
+    border: '#F0E6D8',
+    success: '#4CAF50',
     error: '#FF3B30',
   },
   spacing: {

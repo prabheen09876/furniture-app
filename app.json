@@ -1,31 +1,31 @@
 {
   "expo": {
-    "name": "AceQuint",
-    "slug": "acequint-app",
+    "name": "Kesarwala",
+    "slug": "kesarwala-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./app/icon.png",
-    "scheme": "acequint",
+    "icon": "./assets/logokesarwala.png",
+    "scheme": "kesarwala",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#2D1B16"
+      "backgroundColor": "#FF8C00"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.acequint.app"
+      "bundleIdentifier": "com.kesarwala.app"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/logokesarwala.png",
         "backgroundColor": "#F5F0E8"
       },
-      "package": "com.acequint.app",
+      "package": "com.kesarwala.app",
       "versionCode": 1,
       "permissions": [
         "android.permission.CAMERA",
@@ -38,25 +38,12 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "single",
-      "favicon": "./app/icon.png"
+      "favicon": "./assets/logokesarwala.png"
     },
     "plugins": [
       "expo-router",
-      "expo-font",
-      "expo-web-browser",
       "expo-image-picker",
-      "expo-camera",
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/notification-icon.png",
-          "color": "#2D1B16",
-          "sounds": [
-            "./assets/notification-sound.wav"
-          ]
-        }
-      ]
+      "expo-camera"
     ],
     "experiments": {
       "typedRoutes": false

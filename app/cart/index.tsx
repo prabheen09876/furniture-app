@@ -18,6 +18,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPrice } from '@/utils/format';
+import theme from '@/app/theme';
 
 type TabType = 'cart' | 'wishlist';
 
@@ -25,19 +26,19 @@ const { width: screenWidth } = Dimensions.get('window');
 
 export default function CartScreen() {
   const { user } = useAuth();
-  const { 
-    items: cartItems, 
-    removeFromCart, 
-    updateQuantity, 
-    getTotalPrice, 
+  const {
+    items: cartItems,
+    removeFromCart,
+    updateQuantity,
+    getTotalPrice,
     getTotalItems,
-    addToCart 
+    addToCart
   } = useCart();
-  
-  const { 
-    items: wishlistItems, 
-    removeFromWishlist, 
-    refreshWishlist 
+
+  const {
+    items: wishlistItems,
+    removeFromWishlist,
+    refreshWishlist
   } = useWishlist();
   const [activeTab, setActiveTab] = useState<TabType>('cart');
 
@@ -64,11 +65,11 @@ export default function CartScreen() {
         Your {tab} is empty
       </Text>
       <Text style={styles.emptySubtitle}>
-        {activeTab === 'cart' 
+        {activeTab === 'cart'
           ? 'Add some items to get started!'
           : 'Save items you love to your wishlist!'}
       </Text>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.continueShoppingButton}
         onPress={() => router.push('/')}
       >
@@ -80,9 +81,9 @@ export default function CartScreen() {
   const renderCartItem = ({ item }: { item: CartItem }) => (
     <View style={styles.itemContainer}>
       <View style={styles.itemImageContainer}>
-        <Image 
-          source={{ uri: item.products.image_url || require('@/assets/images/placeholder').placeholderImageBase64 }} 
-          style={styles.itemImage} 
+        <Image
+          source={{ uri: item.products.image_url || require('@/assets/images/placeholder').placeholderImageBase64 }}
+          style={styles.itemImage}
           resizeMode="cover"
           defaultSource={{ uri: require('@/assets/images/placeholder').placeholderImageBase64 }}
         />
@@ -95,14 +96,14 @@ export default function CartScreen() {
           {formatPrice(item.products.price)}
         </Text>
         <View style={styles.quantityContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.quantityButton}
             onPress={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
           >
             <Minus size={16} color="#2D1B16" />
           </TouchableOpacity>
           <Text style={styles.quantityText}>{item.quantity}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.quantityButton}
             onPress={() => updateQuantity(item.id, item.quantity + 1)}
           >
@@ -110,7 +111,7 @@ export default function CartScreen() {
           </TouchableOpacity>
         </View>
       </View>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.removeButton}
         onPress={() => removeFromCart(item.id)}
       >
@@ -122,9 +123,9 @@ export default function CartScreen() {
   const renderWishlistItem = ({ item }: { item: WishlistItem }) => (
     <View style={styles.itemContainer}>
       <View style={styles.itemImageContainer}>
-        <Image 
-          source={{ uri: item.products.image_url || require('@/assets/images/placeholder').placeholderImageBase64 }} 
-          style={styles.itemImage} 
+        <Image
+          source={{ uri: item.products.image_url || require('@/assets/images/placeholder').placeholderImageBase64 }}
+          style={styles.itemImage}
           resizeMode="cover"
           defaultSource={{ uri: require('@/assets/images/placeholder').placeholderImageBase64 }}
         />
@@ -137,7 +138,7 @@ export default function CartScreen() {
           {formatPrice(item.products.price)}
         </Text>
         <View style={styles.wishlistButtons}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.addToCartButton}
             onPress={async () => {
               await addToCart(item.products.id, 1);
@@ -149,7 +150,7 @@ export default function CartScreen() {
           </TouchableOpacity>
         </View>
       </View>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.removeButton}
         onPress={() => removeFromWishlist(item.products.id)}
       >
@@ -179,7 +180,7 @@ export default function CartScreen() {
           style={[styles.tab, activeTab === 'cart' && styles.activeTab]}
           onPress={() => setActiveTab('cart')}
         >
-          <ShoppingCart size={20} color={activeTab === 'cart' ? '#2D1B16' : '#8B7355'} />
+          <ShoppingCart size={20} color={activeTab === 'cart' ? theme.colors.primary : theme.colors.textLight} />
           <Text style={[styles.tabText, activeTab === 'cart' && styles.activeTabText]}>
             Cart {cartItems.length > 0 && `(${cartItems.length})`}
           </Text>
@@ -188,7 +189,7 @@ export default function CartScreen() {
           style={[styles.tab, activeTab === 'wishlist' && styles.activeTab]}
           onPress={() => setActiveTab('wishlist')}
         >
-          <Heart size={20} color={activeTab === 'wishlist' ? '#2D1B16' : '#8B7355'} />
+          <Heart size={20} color={activeTab === 'wishlist' ? theme.colors.primary : theme.colors.textLight} />
           <Text style={[styles.tabText, activeTab === 'wishlist' && styles.activeTabText]}>
             Wishlist {wishlistItems.length > 0 && `(${wishlistItems.length})`}
           </Text>
@@ -214,7 +215,7 @@ export default function CartScreen() {
                   <Text style={styles.totalLabel}>Total:</Text>
                   <Text style={styles.totalPrice}>{formatPrice(getTotalPrice())}</Text>
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.checkoutButton}
                   onPress={() => router.push('/checkout')}
                 >
@@ -262,7 +263,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#2D1B16',
+    color: theme.colors.text,
   },
   itemCount: {
     fontSize: 16,
@@ -297,7 +298,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   activeTabText: {
-    color: '#2D1B16',
+    color: theme.colors.primary,
     fontWeight: '600',
   },
   contentContainer: {
@@ -335,13 +336,13 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#2D1B16',
+    color: theme.colors.text,
     marginBottom: 4,
   },
   itemPrice: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2D1B16',
+    color: theme.colors.primary,
     marginBottom: 8,
   },
   quantityContainer: {
@@ -372,7 +373,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   addToCartButton: {
-    backgroundColor: '#2D1B16',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
@@ -388,7 +389,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     position: 'absolute',
-    bottom: 80, // Increased bottom position to avoid overlap with tab bar
+    bottom: 110, // Increased significantly to clear tab bar
     left: 10,
     right: 10,
     backgroundColor: 'white',
@@ -401,7 +402,7 @@ const styles = StyleSheet.create({
     // shadowRadius: 10,
     // elevation: 5,
     zIndex: 50, // Added zIndex to ensure it appears above other elements
- 
+
   },
   totalContainer: {
     flexDirection: 'row',
@@ -418,7 +419,7 @@ const styles = StyleSheet.create({
     color: '#2D1B16',
   },
   checkoutButton: {
-    backgroundColor: '#2D1B16',
+    backgroundColor: theme.colors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -448,7 +449,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   continueShoppingButton: {
-    backgroundColor: '#2D1B16',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
@@ -477,7 +478,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   authButton: {
-    backgroundColor: '#2D1B16',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 12,
     paddingHorizontal: 32,
     borderRadius: 8,

@@ -15,6 +15,7 @@ import { BlurView } from 'expo-blur';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import theme from '@/app/theme';
 
 export default function AuthScreen() {
   const { signIn, signUp, loading } = useAuth();
@@ -54,7 +55,7 @@ export default function AuthScreen() {
 
     setAuthLoading(true);
     try {
-      const { error } = isSignUp 
+      const { error } = isSignUp
         ? await signUp(email.trim(), password)
         : await signIn(email.trim(), password);
 
@@ -65,9 +66,9 @@ export default function AuthScreen() {
         } else {
           console.error('Auth error:', error);
         }
-        
+
         let errorMessage = 'An error occurred. Please try again.';
-        
+
         if (error.message) {
           if (error.message.includes('Invalid login credentials')) {
             errorMessage = 'Invalid email or password. Please check your credentials and try again.';
@@ -85,7 +86,7 @@ export default function AuthScreen() {
             errorMessage = error.message;
           }
         }
-        
+
         Alert.alert('Authentication Error', errorMessage);
       } else {
         console.log('Authentication successful');
@@ -105,8 +106,8 @@ export default function AuthScreen() {
 
   return (
     <LinearGradient colors={['#F5E6D3', '#E8D5C4']} style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         {/* Header */}
@@ -123,9 +124,9 @@ export default function AuthScreen() {
               {isSignUp ? 'Create Account' : 'Welcome Back'}
             </Text>
             <Text style={styles.subtitle}>
-              {isSignUp 
-                ? 'Sign up to start shopping' 
-                : 'Sign in to your AceQuint account'
+              {isSignUp
+                ? 'Sign up to start shopping'
+                : 'Sign in to your Kesarwala account'
               }
             </Text>
 
@@ -225,7 +226,7 @@ export default function AuthScreen() {
               <Text style={styles.switchText}>
                 {isSignUp ? 'Already have an account?' : "Don't have an account?"}
               </Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setIsSignUp(!isSignUp)}
                 disabled={isLoading}
               >
@@ -276,7 +277,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2D1B16',
+    color: theme.colors.text,
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -293,7 +294,7 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#2D1B16',
+    color: theme.colors.text,
     marginBottom: 8,
   },
   input: {
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#2D1B16',
+    color: theme.colors.text,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
@@ -319,7 +320,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#2D1B16',
+    color: theme.colors.text,
   },
   eyeButton: {
     paddingHorizontal: 16,
@@ -332,7 +333,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   authButton: {
-    backgroundColor: '#2D1B16',
+    backgroundColor: theme.colors.primary,
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
@@ -359,7 +360,7 @@ const styles = StyleSheet.create({
   },
   switchButton: {
     fontSize: 14,
-    color: '#2D1B16',
+    color: theme.colors.primary,
     fontWeight: '600',
   },
   switchButtonDisabled: {

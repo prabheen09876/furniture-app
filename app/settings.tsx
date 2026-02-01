@@ -53,20 +53,20 @@ export default function SettingsScreen() {
           text: 'Send Reset Link',
           onPress: async () => {
             if (!user?.email) return;
-            
+
             setLoading(true);
             try {
               const { error } = await supabase.auth.resetPasswordForEmail(
                 user.email,
                 {
-                  redirectTo: 'AceQuint://reset-password',
+                  redirectTo: 'Kesarwala://reset-password',
                 }
               );
-              
+
               if (error) {
                 throw error;
               }
-              
+
               Alert.alert(
                 'Reset Link Sent',
                 'Check your email for a password reset link.'
@@ -254,7 +254,7 @@ export default function SettingsScreen() {
           <ActivityIndicator size="large" color="#2D1B16" />
         </View>
       )}
-      
+
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -266,69 +266,69 @@ export default function SettingsScreen() {
         {renderUserProfile()}
 
         {renderSection('Preferences')}
-        
+
         {renderToggleItem(
           <Bell size={20} color="#2D1B16" strokeWidth={1.5} />,
           'Push Notifications',
           notificationsEnabled,
           () => handleNotificationToggle(!notificationsEnabled)
         )}
-        
+
         {renderToggleItem(
           <Moon size={20} color="#2D1B16" strokeWidth={1.5} />,
           'Dark Mode',
           isDarkMode,
           handleDarkModeToggle
         )}
-        
+
         {renderSection('Account & Security')}
-        
+
         {renderArrowItem(
           <Lock size={20} color="#2D1B16" strokeWidth={1.5} />,
           'Change Password',
           handleChangePassword
         )}
-        
+
         {renderArrowItem(
           <Shield size={20} color="#2D1B16" strokeWidth={1.5} />,
           'Privacy & Security',
           () => Alert.alert('Privacy', 'Privacy settings would go here')
         )}
-        
+
         {renderSection('General')}
-        
+
         {renderArrowItem(
           <Globe size={20} color="#2D1B16" strokeWidth={1.5} />,
           'Language',
           () => Alert.alert('Language', 'Language settings would go here')
         )}
-        
+
         {renderArrowItem(
           <HelpCircle size={20} color="#2D1B16" strokeWidth={1.5} />,
           'Help & Support',
           () => Alert.alert('Help', 'Help & Support would go here')
         )}
-        
+
         {renderArrowItem(
           <Shield size={20} color="#2D1B16" strokeWidth={1.5} />,
           'Privacy Policy',
           () => router.push('/privacy-policy')
         )}
-        
+
         {renderArrowItem(
           <Star size={20} color="#2D1B16" strokeWidth={1.5} />,
           'Rate App',
           () => Alert.alert('Rate App', 'Thank you for your feedback!')
         )}
-        
+
         {renderSection('Danger Zone')}
-        
+
         {renderDangerItem(
           <Trash2 size={20} color="#EF4444" strokeWidth={1.5} />,
           'Delete Account',
           handleDeleteAccount
         )}
-        
+
         <TouchableOpacity
           style={styles.signOutButton}
           onPress={handleSignOut}
@@ -341,9 +341,9 @@ export default function SettingsScreen() {
             </View>
           </BlurView>
         </TouchableOpacity>
-        
+
         <View style={styles.versionContainer}>
-          <Text style={styles.versionText}>AceQuint Furniture v1.0.0</Text>
+          <Text style={styles.versionText}>Kesarwala v1.0.0</Text>
         </View>
       </ScrollView>
     </LinearGradient>
