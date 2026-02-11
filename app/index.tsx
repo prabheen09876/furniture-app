@@ -22,7 +22,7 @@ import { ProductGrid } from './ProductGrid';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import BannerCarousel from '@/components/BannerCarousel';
-import theme from '@/app/theme';
+import theme from '@/lib/theme';
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('en-IN', {

@@ -43,7 +43,10 @@
     "plugins": [
       "expo-router",
       "expo-image-picker",
-      "expo-camera"
+      "expo-camera",
+      "expo-font",
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": false
@@ -51,7 +54,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "b3772d3e-f1fd-4184-9a4d-f212b07469ff"
+        "projectId": "7e2944d5-2988-4577-aa7b-9ac676be994b"
       }
     },
     "owner": "prabheen09876"

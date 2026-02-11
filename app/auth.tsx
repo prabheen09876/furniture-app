@@ -15,7 +15,7 @@ import { BlurView } from 'expo-blur';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import theme from '@/app/theme';
+import theme from '@/lib/theme';
 
 export default function AuthScreen() {
   const { signIn, signUp, loading } = useAuth();

@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import theme from './theme';
+import theme from '@/lib/theme';
 
 type HeaderProps = {
   title: string;
@@ -11,13 +11,13 @@ type HeaderProps = {
 const Header = ({
   title,
   subtitle,
-  onMenuPress = () => {},
+  onMenuPress = () => { },
 }: Omit<HeaderProps, 'onCartPress'>) => {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <TouchableOpacity 
-          onPress={onMenuPress} 
+        <TouchableOpacity
+          onPress={onMenuPress}
           style={styles.menuButton}
           activeOpacity={0.7}
         >

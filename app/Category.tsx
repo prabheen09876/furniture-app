@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import theme from './theme';
+import theme from '@/lib/theme';
 
 type CategoryProps = {
   icon: string;
@@ -14,7 +14,7 @@ const Category = ({
   icon,
   label,
   isActive = false,
-  onPress = () => {},
+  onPress = () => { },
 }: CategoryProps) => {
   // Map icon names to MaterialCommunityIcons
   const getIconName = (iconName: string) => {
@@ -36,19 +36,19 @@ const Category = ({
       activeOpacity={0.7}
       accessibilityState={{ selected: isActive }}
     >
-      <View 
+      <View
         style={[
           styles.iconContainer,
           isActive ? styles.activeIconContainer : {},
         ]}
       >
-        <MaterialCommunityIcons 
+        <MaterialCommunityIcons
           name={getIconName(icon) as any}
           size={24}
           color={isActive ? theme.colors.primary : theme.colors.text}
         />
       </View>
-      <Text 
+      <Text
         style={[
           styles.label,
           isActive && styles.activeLabel,
@@ -74,8 +74,8 @@ const CategoryList = ({
 }: CategoryListProps) => {
   return (
     <View style={styles.container}>
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >

@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, Image, ImageSourcePropType, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import PlaceholderImage from './components/PlaceholderImage';
-import theme from './theme';
+import theme from '@/lib/theme';
 import { formatPrice } from '@/utils/format';
 
 type ProductCardProps = {
@@ -19,8 +19,8 @@ const ProductCard = ({
   name,
   price,
   image,
-  onPress = () => {},
-  onFavoritePress = () => {},
+  onPress = () => { },
+  onFavoritePress = () => { },
   isFavorite = false,
 }: ProductCardProps) => {
   const handleFavoritePress = (e: { stopPropagation: () => void; }) => {
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
     borderRadius: theme.radius.full,
     padding: theme.spacing.xs,
-    
+
   },
   detailsContainer: {
     marginTop: theme.spacing.xs,

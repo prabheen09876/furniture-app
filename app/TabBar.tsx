@@ -1,7 +1,7 @@
 import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import theme from './theme';
+import theme from '@/lib/theme';
 import { useCart } from '../contexts/CartContext';
 
 type TabBarItemProps = {
@@ -56,7 +56,7 @@ const TabBar = ({ onSearchPress }: TabBarProps) => {
   const activeTab = route === 'cart' ? 'cart' : route === 'profile' ? 'profile' : route === 'categories' ? 'categories' : route;
   const { items } = useCart();
   const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
-  
+
   const tabs = [
     { id: 'home', icon: 'home-outline', label: 'Home', isSearch: false, route: '/' },
     { id: 'categories', icon: 'grid-outline', label: 'Categories', isSearch: false, route: '/categories' },

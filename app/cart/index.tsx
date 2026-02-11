@@ -18,7 +18,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPrice } from '@/utils/format';
-import theme from '@/app/theme';
+import theme from '@/lib/theme';
 
 type TabType = 'cart' | 'wishlist';
 

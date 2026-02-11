@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import theme from '../theme';
+import theme from '@/lib/theme';
 
 type Category = {
   id: string;
@@ -156,7 +156,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
                     />
                   )}
                 </TouchableOpacity>
-                
+
                 {expandedCategories[category.id] && category.children?.map(child => (
                   <TouchableOpacity
                     key={child.id}
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingHorizontal: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 2,  height: 0 },
+    shadowOffset: { width: 2, height: 0 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 5,
