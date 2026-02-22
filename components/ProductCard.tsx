@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity, Image, ImageSourcePropType, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import PlaceholderImage from './components/PlaceholderImage';
+import PlaceholderImage from './PlaceholderImage';
 import theme from '@/lib/theme';
 import { formatPrice } from '@/utils/format';
 

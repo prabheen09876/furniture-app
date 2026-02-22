@@ -17,6 +17,10 @@
     "production": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://khoxioouyornfttziire.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtob3hpb291eW9ybmZ0dHppaXJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NjYzMDEsImV4cCI6MjA2NzA0MjMwMX0.3u-vZlLtgsm4UXhxg8MHM0Yq462p-QLI9QhQ1XoV82M"
       }
     }
   },

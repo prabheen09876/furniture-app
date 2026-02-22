@@ -18,7 +18,7 @@ import { BlurView } from 'expo-blur';
 import { Search, Bell, ChevronDown, Maximize } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
-import { ProductGrid } from './ProductGrid';
+import { ProductGrid } from '@/components/ProductGrid';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import BannerCarousel from '@/components/BannerCarousel';
